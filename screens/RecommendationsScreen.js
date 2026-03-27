@@ -79,7 +79,7 @@ export default function RecommendationsScreen({ route, navigation }) {
                   {item.first_air_date ? item.first_air_date.split('-')[0] : ''}
                   {item.vote_average ? `  ⭐ ${item.vote_average.toFixed(1)}` : ''}
                 </Text>
-                {item.latestEpisode ? (
+                {item.latestEpisode && !(item.latestEpisode.season_number === 1 && item.latestEpisode.episode_number === 1) ? (
                   <View style={styles.episodeBadge}>
                     <Text style={[styles.episodeBadgeText, { color: accent }]}>
                       Latest: S{item.latestEpisode.season_number} E{item.latestEpisode.episode_number}

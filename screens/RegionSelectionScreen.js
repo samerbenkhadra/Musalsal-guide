@@ -10,7 +10,7 @@ import {
 const regions = [
   { name: 'Egyptian', emoji: '🇪🇬', color: '#C9637A', cardBg: '#52303C' },
   { name: 'Turkish', emoji: '🇹🇷', color: '#C97A63', cardBg: '#523830' },
-  { name: 'Gulf', emoji: '🌙', color: '#7AC963', cardBg: '#305238' },
+  { name: 'Gulf', emoji: '🇸🇦', color: '#7AC963', cardBg: '#305238' },
   { name: 'Syrian', emoji: '🇸🇾', color: '#637AC9', cardBg: '#303852' },
   { name: 'Lebanese', emoji: '🇱🇧', color: '#C96363', cardBg: '#523030' },
   { name: 'All Arabic', emoji: '🌍', color: '#B39DDB', cardBg: '#30304A' },
