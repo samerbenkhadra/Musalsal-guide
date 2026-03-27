@@ -9,26 +9,26 @@ import {
 import { moods } from '../data/mockData';
 
 const moodConfig = {
-  Romance: { emoji: '💕', color: '#E8A0BF', light: '#2C1A20' },
-  Betrayal: { emoji: '🗡️', color: '#E07070', light: '#2C1A1A' },
-  Tension: { emoji: '⚡', color: '#B39DDB', light: '#1E1A2C' },
-  Drama: { emoji: '🎭', color: '#FFAB76', light: '#2C1E14' },
+  Romance: { emoji: '💕', color: '#E8C8D0', cardBg: '#52303C' },
+  Betrayal: { emoji: '🗡️', color: '#C8C4DC', cardBg: '#302840' },
+  Tension: { emoji: '⚡', color: '#B8D0D8', cardBg: '#1E3844' },
+  Drama: { emoji: '🎭', color: '#E0CCBC', cardBg: '#4A3020' },
 };
 
 export default function MoodSelectionScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.safe}>
       <View style={styles.container}>
-        <Text style={styles.title}>Musalsal Guide</Text>
-        <Text style={styles.subtitle}>What are you in the mood for?</Text>
+        <Text style={styles.title}>MusalsalGo</Text>
+        <Text style={styles.subtitle}>Pick your mood. Find your episode.</Text>
 
         <View style={styles.grid}>
           {moods.map((mood) => {
-            const { emoji, color, light } = moodConfig[mood];
+            const { emoji, color, cardBg } = moodConfig[mood];
             return (
               <TouchableOpacity
                 key={mood}
-                style={[styles.card, { backgroundColor: light, borderColor: color }]}
+                style={[styles.card, { backgroundColor: cardBg }]}
                 activeOpacity={0.8}
                 onPress={() => navigation.navigate('Recommendations', { mood })}
               >
@@ -46,7 +46,7 @@ export default function MoodSelectionScreen({ navigation }) {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#1A0F0A',
+    backgroundColor: '#1C1C1E',
   },
   container: {
     flex: 1,
@@ -76,22 +76,21 @@ const styles = StyleSheet.create({
   card: {
     width: '47%',
     aspectRatio: 1,
-    borderRadius: 20,
-    borderWidth: 1.5,
+    borderRadius: 24,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 6,
   },
   emoji: {
-    fontSize: 40,
-    marginBottom: 10,
+    fontSize: 44,
+    marginBottom: 12,
   },
   moodLabel: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
     letterSpacing: 0.3,
   },
