@@ -6,10 +6,14 @@ import {
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
+  Image,
 } from 'react-native';
+import { IMAGE_BASE_URL } from '../services/tmdb';
 
 export default function EpisodeDetailScreen({ route, navigation }) {
-  const { episode, accent } = route.params;
+  const { show, accent } = route.params;
+  const year = show.first_air_date ? show.first_air_date.split('-')[0] : '';
+  const rating = show.vote_average ? show.vote_average.toFixed(1) : null;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -18,21 +22,34 @@ export default function EpisodeDetailScreen({ route, navigation }) {
           <Text style={[styles.backText, { color: accent }]}>← Back</Text>
         </TouchableOpacity>
 
-        <View style={[styles.badge, { backgroundColor: accent + '20', borderColor: accent }]}>
-          <Text style={[styles.badgeText, { color: accent }]}>{episode.episode}</Text>
+        {show.poster_path ? (
+          <Image
+            source={{ uri: `${IMAGE_BASE_URL}${show.poster_path}` }}
+            style={styles.poster}
+          />
+        ) : null}
+
+        <View style={styles.metaRow}>
+          {year ? (
+            <View style={[styles.badge, { backgroundColor: accent + '30', borderColor: accent }]}>
+              <Text style={[styles.badgeText, { color: accent }]}>{year}</Text>
+            </View>
+          ) : null}
+          {rating ? (
+            <View style={[styles.badge, { backgroundColor: accent + '30', borderColor: accent }]}>
+              <Text style={[styles.badgeText, { color: accent }]}>⭐ {rating}</Text>
+            </View>
+          ) : null}
         </View>
 
-        <Text style={styles.showName}>{episode.showName}</Text>
-        <Text style={styles.tagline}>{episode.description}</Text>
+        <Text style={styles.showName}>{show.name}</Text>
 
         <View style={styles.divider} />
 
-        <Section title="Episode Summary" accent={accent}>
-          <Text style={styles.bodyText}>{episode.fullSummary}</Text>
-        </Section>
-
-        <Section title="Relationship Dynamics" accent={accent}>
-          <Text style={styles.bodyText}>{episode.relationshipDynamics}</Text>
+        <Section title="About this show" accent={accent}>
+          <Text style={styles.bodyText}>
+            {show.overview || 'No description available.'}
+          </Text>
         </Section>
       </ScrollView>
     </SafeAreaView>
@@ -54,7 +71,7 @@ function Section({ title, accent, children }) {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#1A0F0A',
+    backgroundColor: '#1C1C1E',
   },
   scroll: {
     padding: 24,
@@ -67,34 +84,37 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
+  poster: {
+    width: '100%',
+    height: 320,
+    borderRadius: 16,
+    marginBottom: 16,
+  },
+  metaRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 12,
+  },
   badge: {
-    alignSelf: 'flex-start',
     borderWidth: 1,
     borderRadius: 8,
     paddingHorizontal: 10,
     paddingVertical: 4,
-    marginBottom: 12,
   },
   badgeText: {
     fontSize: 13,
     fontWeight: '700',
   },
   showName: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '800',
     color: '#F5E6D0',
-    lineHeight: 34,
+    lineHeight: 32,
     marginBottom: 8,
-  },
-  tagline: {
-    fontSize: 16,
-    color: '#A08060',
-    lineHeight: 24,
-    fontStyle: 'italic',
   },
   divider: {
     height: 1,
-    backgroundColor: '#2E1E14',
+    backgroundColor: '#2E2E30',
     marginVertical: 24,
   },
   section: {
@@ -118,7 +138,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.2,
   },
   sectionBody: {
-    backgroundColor: '#2A1710',
+    backgroundColor: '#2A2A2C',
     borderRadius: 14,
     padding: 16,
     shadowColor: '#000',

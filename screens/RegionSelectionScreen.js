@@ -1,0 +1,103 @@
+import React from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  SafeAreaView,
+} from 'react-native';
+
+const regions = [
+  { name: 'Egyptian', emoji: '🇪🇬', color: '#C9637A', cardBg: '#52303C' },
+  { name: 'Turkish', emoji: '🇹🇷', color: '#C97A63', cardBg: '#523830' },
+  { name: 'Gulf', emoji: '🌙', color: '#7AC963', cardBg: '#305238' },
+  { name: 'Syrian', emoji: '🇸🇾', color: '#637AC9', cardBg: '#303852' },
+  { name: 'Lebanese', emoji: '🇱🇧', color: '#C96363', cardBg: '#523030' },
+  { name: 'All Arabic', emoji: '🌍', color: '#B39DDB', cardBg: '#30304A' },
+];
+
+export default function RegionSelectionScreen({ navigation }) {
+  return (
+    <SafeAreaView style={styles.safe}>
+      <View style={styles.container}>
+        <Text style={styles.title}>MusalsalGo</Text>
+        <Text style={styles.subtitle}>Browse less. Watch more.</Text>
+
+        <Text style={styles.sectionLabel}>Where's it from?</Text>
+
+        <View style={styles.grid}>
+          {regions.map((region) => (
+            <TouchableOpacity
+              key={region.name}
+              style={[styles.card, { backgroundColor: region.cardBg }]}
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('EraSelection', { region: region.name })}
+            >
+              <Text style={styles.emoji}>{region.emoji}</Text>
+              <Text style={[styles.label, { color: region.color }]}>{region.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: '#1C1C1E',
+  },
+  container: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 48,
+  },
+  title: {
+    fontSize: 30,
+    fontWeight: '800',
+    color: '#F5E6D0',
+    letterSpacing: 0.5,
+    marginBottom: 6,
+  },
+  subtitle: {
+    fontSize: 15,
+    color: '#A08060',
+    marginBottom: 36,
+  },
+  sectionLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6B6B70',
+    letterSpacing: 1,
+    textTransform: 'uppercase',
+    marginBottom: 14,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 14,
+  },
+  card: {
+    width: '47%',
+    aspectRatio: 1,
+    borderRadius: 24,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.35,
+    shadowRadius: 10,
+    elevation: 6,
+  },
+  emoji: {
+    fontSize: 40,
+    marginBottom: 10,
+  },
+  label: {
+    fontSize: 15,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+});

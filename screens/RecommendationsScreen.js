@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -6,20 +6,36 @@ import {
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
+  Image,
 } from 'react-native';
-import { recommendations } from '../data/mockData';
+import { fetchShows, fetchLatestEpisode, IMAGE_BASE_URL } from '../services/tmdb';
+import SkeletonCard from '../components/SkeletonCard';
 
-const moodColor = {
-  Romance: '#E8A0BF',
-  Betrayal: '#E07070',
-  Tension: '#B39DDB',
-  Drama: '#FFAB76',
+const eraColor = {
+  Classic: '#FFAB76',
+  Modern: '#B39DDB',
+  Recent: '#E8A0BF',
+  Ramadan: '#7AC9C9',
 };
 
 export default function RecommendationsScreen({ route, navigation }) {
-  const { mood } = route.params;
-  const episodes = recommendations[mood];
-  const accent = moodColor[mood];
+  const { region, era } = route.params;
+  const accent = eraColor[era] || '#F5E6D0';
+  const [shows, setShows] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchShows(region, era).then(async (data) => {
+      const withEpisodes = await Promise.all(
+        data.map(async (show) => {
+          const latestEpisode = await fetchLatestEpisode(show.id);
+          return { ...show, latestEpisode };
+        })
+      );
+      setShows(withEpisodes);
+      setLoading(false);
+    });
+  }, [region, era]);
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -27,32 +43,58 @@ export default function RecommendationsScreen({ route, navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Text style={[styles.backText, { color: accent }]}>← Back</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{mood}</Text>
-        <Text style={styles.headerSub}>Top picks for you</Text>
+        <Text style={styles.headerTitle}>{region}</Text>
+        <Text style={styles.headerSub}>{era} shows</Text>
       </View>
 
-      <FlatList
-        data={episodes}
-        keyExtractor={(item) => item.id}
-        contentContainerStyle={styles.list}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.card}
-            activeOpacity={0.85}
-            onPress={() => navigation.navigate('EpisodeDetail', { episode: item, accent })}
-          >
-            <View style={[styles.accentBar, { backgroundColor: accent }]} />
-            <View style={styles.cardContent}>
-              <Text style={styles.showName}>{item.showName}</Text>
-              <Text style={[styles.episode, { color: accent }]}>{item.episode}</Text>
-              <Text style={styles.description} numberOfLines={2}>
-                {item.description}
-              </Text>
-              <Text style={[styles.readMore, { color: accent }]}>Read more →</Text>
-            </View>
-          </TouchableOpacity>
-        )}
-      />
+      {loading ? (
+        <View style={styles.list}>
+          {[1, 2, 3, 4, 5].map((i) => <SkeletonCard key={i} />)}
+        </View>
+      ) : shows.length === 0 ? (
+        <View style={styles.emptyContainer}>
+          <Text style={styles.emptyText}>No shows found. Try a different combination.</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={shows}
+          keyExtractor={(item) => item.id.toString()}
+          contentContainerStyle={styles.list}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={styles.card}
+              activeOpacity={0.85}
+              onPress={() => navigation.navigate('EpisodeDetail', { show: item, accent })}
+            >
+              <View style={[styles.accentBar, { backgroundColor: accent }]} />
+              {item.poster_path ? (
+                <Image
+                  source={{ uri: `${IMAGE_BASE_URL}${item.poster_path}` }}
+                  style={styles.poster}
+                />
+              ) : null}
+              <View style={styles.cardContent}>
+                <Text style={styles.showName} numberOfLines={1}>{item.name}</Text>
+                <Text style={[styles.meta, { color: accent }]}>
+                  {item.first_air_date ? item.first_air_date.split('-')[0] : ''}
+                  {item.vote_average ? `  ⭐ ${item.vote_average.toFixed(1)}` : ''}
+                </Text>
+                {item.latestEpisode ? (
+                  <View style={styles.episodeBadge}>
+                    <Text style={[styles.episodeBadgeText, { color: accent }]}>
+                      Latest: S{item.latestEpisode.season_number} E{item.latestEpisode.episode_number}
+                    </Text>
+                    <Text style={styles.episodeName} numberOfLines={1}>
+                      {item.latestEpisode.name}
+                    </Text>
+                  </View>
+                ) : null}
+                <Text style={[styles.readMore, { color: accent }]}>Read more →</Text>
+              </View>
+            </TouchableOpacity>
+          )}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -60,15 +102,15 @@ export default function RecommendationsScreen({ route, navigation }) {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#1A0F0A',
+    backgroundColor: '#1C1C1E',
   },
   header: {
     paddingHorizontal: 24,
     paddingTop: 20,
     paddingBottom: 16,
-    backgroundColor: '#1A0F0A',
+    backgroundColor: '#1C1C1E',
     borderBottomWidth: 1,
-    borderBottomColor: '#2E1E14',
+    borderBottomColor: '#2E2E30',
   },
   backBtn: {
     marginBottom: 8,
@@ -87,12 +129,22 @@ const styles = StyleSheet.create({
     color: '#A08060',
     marginTop: 2,
   },
+  emptyContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  emptyText: {
+    color: '#A08060',
+    fontSize: 15,
+    textAlign: 'center',
+  },
   list: {
     padding: 20,
-    gap: 14,
   },
   card: {
-    backgroundColor: '#2A1710',
+    backgroundColor: '#2A2A2C',
     borderRadius: 16,
     flexDirection: 'row',
     overflow: 'hidden',
@@ -104,31 +156,51 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   accentBar: {
-    width: 5,
+    width: 4,
+  },
+  poster: {
+    width: 70,
+    height: 105,
   },
   cardContent: {
     flex: 1,
-    padding: 16,
+    padding: 12,
+    justifyContent: 'center',
   },
   showName: {
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
     color: '#F5E6D0',
     marginBottom: 2,
   },
-  episode: {
-    fontSize: 13,
+  meta: {
+    fontSize: 12,
     fontWeight: '600',
     marginBottom: 6,
   },
   description: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#A08060',
-    lineHeight: 20,
+    lineHeight: 18,
     marginBottom: 8,
   },
+  episodeBadge: {
+    backgroundColor: '#1C1C1E',
+    borderRadius: 6,
+    padding: 6,
+    marginBottom: 8,
+  },
+  episodeBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  episodeName: {
+    fontSize: 11,
+    color: '#F5E6D0',
+  },
   readMore: {
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
   },
 });
