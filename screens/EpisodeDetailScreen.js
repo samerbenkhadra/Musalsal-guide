@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -8,52 +8,156 @@ import {
   SafeAreaView,
   Image,
   Linking,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { IMAGE_BASE_URL } from '../services/tmdb';
+import { CLAUDE_API_KEY } from '../services/config';
 
 export default function EpisodeDetailScreen({ route, navigation }) {
   const { show, accent } = route.params;
   const year = show.first_air_date ? show.first_air_date.split('-')[0] : '';
 
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const scrollRef = useRef(null);
+
+  const sendMessage = async () => {
+    const text = input.trim();
+    if (!text || loading) return;
+
+    const userMessage = { role: 'user', content: text };
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
+    setInput('');
+    setLoading(true);
+
+    try {
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-api-key': CLAUDE_API_KEY,
+          'anthropic-version': '2023-06-01',
+        },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 512,
+          system: `You are a knowledgeable assistant for the Arabic TV show "${show.name}". Here is a description: ${show.overview || 'No description available.'}. Use this description as well as your own knowledge about the show to give detailed, helpful answers. Write in plain conversational text only — no markdown, no bullet points with *, no # headings, no bold with **. If the user writes in Arabic, respond in Arabic.`,
+          messages: updatedMessages,
+        }),
+      });
+
+      const data = await response.json();
+      const reply = data.content?.[0]?.text || 'Sorry, I could not get a response.';
+      setMessages((prev) => [...prev, { role: 'assistant', content: reply }]);
+    } catch (error) {
+      setMessages((prev) => [...prev, { role: 'assistant', content: 'Something went wrong. Please try again.' }]);
+    } finally {
+      setLoading(false);
+      setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={[styles.backText, { color: accent }]}>← Back</Text>
-        </TouchableOpacity>
-
-        {(show.poster_url || show.poster_path) ? (
-          <Image
-            source={{ uri: show.poster_url || `${IMAGE_BASE_URL}${show.poster_path}` }}
-            style={styles.poster}
-          />
-        ) : null}
-
-        <View style={styles.metaRow}>
-          {year ? (
-            <View style={[styles.badge, { backgroundColor: accent + '30', borderColor: accent }]}>
-              <Text style={[styles.badgeText, { color: accent }]}>{year}</Text>
-            </View>
-          ) : null}
-        </View>
-
-        <Text style={styles.showName}>{show.name}</Text>
-
-        <View style={styles.divider} />
-
-        <Section title="About this show" accent={accent}>
-          <Text style={styles.bodyText}>
-            {show.overview || 'No description available.'}
-          </Text>
-        </Section>
-
-        <TouchableOpacity
-          style={[styles.watchBtn, { backgroundColor: accent }]}
-          onPress={() => Linking.openURL(`https://www.google.com/search?q=watch+${encodeURIComponent(show.name)}`)}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={0}
+      >
+        <ScrollView
+          ref={scrollRef}
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
         >
-          <Text style={styles.watchBtnText}>Where to watch →</Text>
-        </TouchableOpacity>
-      </ScrollView>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <Text style={[styles.backText, { color: accent }]}>← Back</Text>
+          </TouchableOpacity>
+
+          {(show.poster_url || show.poster_path) ? (
+            <Image
+              source={{ uri: show.poster_url || `${IMAGE_BASE_URL}${show.poster_path}` }}
+              style={styles.poster}
+            />
+          ) : null}
+
+          <View style={styles.metaRow}>
+            {year ? (
+              <View style={[styles.badge, { backgroundColor: accent + '30', borderColor: accent }]}>
+                <Text style={[styles.badgeText, { color: accent }]}>{year}</Text>
+              </View>
+            ) : null}
+          </View>
+
+          <Text style={styles.showName}>{show.name}</Text>
+
+          <View style={styles.divider} />
+
+          <Section title="About this show" accent={accent}>
+            <Text style={styles.bodyText}>
+              {show.overview || 'No description available.'}
+            </Text>
+          </Section>
+
+          <Section title="Ask about this show" accent={accent}>
+            <View style={styles.chatMessages}>
+              {messages.length === 0 && (
+                <Text style={styles.chatPlaceholder}>Ask anything — what do you want to know about the show?</Text>
+              )}
+              {messages.map((msg, i) => (
+                <View
+                  key={i}
+                  style={[
+                    styles.bubble,
+                    msg.role === 'user' ? styles.userBubble : styles.aiBubble,
+                    msg.role === 'user' ? { backgroundColor: accent + '25', borderColor: accent + '60' } : {},
+                  ]}
+                >
+                  <Text style={[styles.bubbleText, msg.role === 'user' ? { color: '#F5E6D0' } : { color: '#C9A880' }]}>
+                    {msg.content}
+                  </Text>
+                </View>
+              ))}
+              {loading && (
+                <View style={styles.aiBubble}>
+                  <ActivityIndicator size="small" color={accent} />
+                </View>
+              )}
+            </View>
+
+            <View style={styles.inputRow}>
+              <TextInput
+                style={styles.textInput}
+                value={input}
+                onChangeText={setInput}
+                placeholder="Ask a question..."
+                placeholderTextColor="#6B6B70"
+                multiline
+                onSubmitEditing={sendMessage}
+              />
+              <TouchableOpacity
+                style={[styles.sendBtn, { backgroundColor: accent }]}
+                onPress={sendMessage}
+                disabled={loading}
+              >
+                <Text style={styles.sendBtnText}>→</Text>
+              </TouchableOpacity>
+            </View>
+          </Section>
+
+          <TouchableOpacity
+            style={[styles.watchBtn, { backgroundColor: accent }]}
+            onPress={() => Linking.openURL(`https://www.google.com/search?q=watch+${encodeURIComponent(show.name)}`)}
+          >
+            <Text style={styles.watchBtnText}>Where to watch →</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -163,6 +267,62 @@ const styles = StyleSheet.create({
   },
   watchBtnText: {
     fontSize: 16,
+    fontWeight: '700',
+    color: '#1C1C1E',
+  },
+  chatMessages: {
+    marginBottom: 12,
+    gap: 8,
+  },
+  chatPlaceholder: {
+    fontSize: 13,
+    color: '#6B6B70',
+    fontStyle: 'italic',
+    lineHeight: 19,
+  },
+  bubble: {
+    borderRadius: 12,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  userBubble: {
+    alignSelf: 'flex-end',
+    maxWidth: '85%',
+  },
+  aiBubble: {
+    alignSelf: 'stretch',
+    backgroundColor: '#1C1C1E',
+  },
+  bubbleText: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 8,
+    marginTop: 4,
+  },
+  textInput: {
+    flex: 1,
+    backgroundColor: '#1C1C1E',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    color: '#F5E6D0',
+    fontSize: 14,
+    maxHeight: 100,
+  },
+  sendBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  sendBtnText: {
+    fontSize: 18,
     fontWeight: '700',
     color: '#1C1C1E',
   },
