@@ -120,7 +120,11 @@ export default function RecommendationsScreen({ route, navigation }) {
           {!scoringDone && <Text style={styles.scoringHint}>Scoring...</Text>}
         </View>
         {activeFilter && scoringDone && (
-          <Text style={styles.discoveryHint}>Showing shows high in {activeFilter}</Text>
+          <View style={[styles.activeFilterBadge, { backgroundColor: TRAITS.find(t => t.key === activeFilter)?.color }]}>
+            <Text style={styles.activeFilterBadgeText}>
+              Filtered: {TRAITS.find(t => t.key === activeFilter)?.label}
+            </Text>
+          </View>
         )}
       </View>
 
@@ -255,6 +259,18 @@ const styles = StyleSheet.create({
     color: '#6B6B70',
     alignSelf: 'center',
     fontStyle: 'italic',
+  },
+  activeFilterBadge: {
+    alignSelf: 'flex-start',
+    marginTop: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+  },
+  activeFilterBadgeText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1C1C1E',
   },
   emptyContainer: {
     flex: 1,
