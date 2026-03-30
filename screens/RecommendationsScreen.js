@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -7,8 +7,11 @@ import {
   StyleSheet,
   SafeAreaView,
   Image,
+  Modal,
+  ScrollView,
 } from 'react-native';
 import { fetchShows, fetchAllShows, fetchNewReleases, fetchLatestEpisode, IMAGE_BASE_URL } from '../services/tmdb';
+import { getShowScores, TRAITS } from '../services/scoring';
 import SkeletonCard from '../components/SkeletonCard';
 
 const eraColor = {
@@ -24,6 +27,9 @@ export default function RecommendationsScreen({ route, navigation }) {
   const [shows, setShows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState('discovery');
+  const [showScores, setShowScores] = useState({});
+  const [activeFilter, setActiveFilter] = useState(null);
+  const [scoringDone, setScoringDone] = useState(false);
 
   const loadShows = async (selectedMode) => {
     setLoading(true);
@@ -39,6 +45,20 @@ export default function RecommendationsScreen({ route, navigation }) {
     );
     setShows(withEpisodes);
     setLoading(false);
+    generateScoresInBackground(withEpisodes);
+  };
+
+  const generateScoresInBackground = async (showList) => {
+    setScoringDone(false);
+    await Promise.all(
+      showList.map(async (show) => {
+        const scores = await getShowScores(show);
+        if (scores) {
+          setShowScores((prev) => ({ ...prev, [show.id]: scores }));
+        }
+      })
+    );
+    setScoringDone(true);
   };
 
   useEffect(() => {
@@ -80,6 +100,28 @@ export default function RecommendationsScreen({ route, navigation }) {
         {mode === 'all' && era === 'Recent' && (
           <Text style={styles.discoveryHint}>Most recently aired shows first</Text>
         )}
+
+        <View style={styles.filterRow}>
+          {TRAITS.map((trait) => (
+            <TouchableOpacity
+              key={trait.key}
+              style={[
+                styles.filterPill,
+                activeFilter === trait.key && { backgroundColor: trait.color },
+                !scoringDone && { opacity: 0.4 },
+              ]}
+              onPress={() => scoringDone && setActiveFilter(activeFilter === trait.key ? null : trait.key)}
+            >
+              <Text style={[styles.filterPillText, activeFilter === trait.key && { color: '#1C1C1E' }]}>
+                {trait.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+          {!scoringDone && <Text style={styles.scoringHint}>Scoring...</Text>}
+        </View>
+        {activeFilter && scoringDone && (
+          <Text style={styles.discoveryHint}>Showing shows high in {activeFilter}</Text>
+        )}
       </View>
 
       {loading ? (
@@ -92,7 +134,9 @@ export default function RecommendationsScreen({ route, navigation }) {
         </View>
       ) : (
         <FlatList
-          data={shows}
+          data={activeFilter
+            ? shows.filter((s) => (showScores[s.id]?.[activeFilter] || 0) >= 60)
+            : shows}
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.list}
           renderItem={({ item }) => (
@@ -185,6 +229,31 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#6B6B70',
     marginTop: 8,
+    fontStyle: 'italic',
+  },
+  filterRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 12,
+  },
+  filterPill: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
+    backgroundColor: '#2A2A2C',
+    borderWidth: 1,
+    borderColor: '#3A3A3C',
+  },
+  filterPillText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#A08060',
+  },
+  scoringHint: {
+    fontSize: 11,
+    color: '#6B6B70',
+    alignSelf: 'center',
     fontStyle: 'italic',
   },
   emptyContainer: {

@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   View,
   Text,
@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { IMAGE_BASE_URL } from '../services/tmdb';
 import { CLAUDE_API_KEY } from '../services/config';
+import { getShowScores, TRAITS } from '../services/scoring';
 
 export default function EpisodeDetailScreen({ route, navigation }) {
   const { show, accent } = route.params;
@@ -23,7 +24,12 @@ export default function EpisodeDetailScreen({ route, navigation }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [scores, setScores] = useState(null);
   const scrollRef = useRef(null);
+
+  useEffect(() => {
+    getShowScores(show).then(setScores);
+  }, []);
 
   const sendMessage = async () => {
     const text = input.trim();
@@ -97,6 +103,24 @@ export default function EpisodeDetailScreen({ route, navigation }) {
           <Text style={styles.showName}>{show.name}</Text>
 
           <View style={styles.divider} />
+
+          {scores ? (
+            <Section title="Vibe Check" accent={accent}>
+              {TRAITS.map((trait) => (
+                <View key={trait.key} style={styles.traitRow}>
+                  <Text style={styles.traitLabel}>{trait.label}</Text>
+                  <View style={styles.traitBarBg}>
+                    <View style={[styles.traitBarFill, { width: `${scores[trait.key] || 0}%`, backgroundColor: trait.color }]} />
+                  </View>
+                  <Text style={[styles.traitScore, { color: trait.color }]}>{scores[trait.key] || 0}</Text>
+                </View>
+              ))}
+            </Section>
+          ) : (
+            <Section title="Vibe Check" accent={accent}>
+              <ActivityIndicator size="small" color={accent} />
+            </Section>
+          )}
 
           <Section title="About this show" accent={accent}>
             <Text style={styles.bodyText}>
@@ -258,6 +282,35 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#C9A880',
     lineHeight: 24,
+  },
+  traitRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  traitLabel: {
+    width: 72,
+    fontSize: 13,
+    color: '#F5E6D0',
+    fontWeight: '600',
+  },
+  traitBarBg: {
+    flex: 1,
+    height: 8,
+    backgroundColor: '#1C1C1E',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginHorizontal: 10,
+  },
+  traitBarFill: {
+    height: '100%',
+    borderRadius: 4,
+  },
+  traitScore: {
+    width: 28,
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'right',
   },
   watchBtn: {
     borderRadius: 14,
