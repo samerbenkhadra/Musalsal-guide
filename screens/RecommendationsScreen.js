@@ -8,7 +8,7 @@ import {
   SafeAreaView,
   Image,
 } from 'react-native';
-import { fetchShows, fetchLatestEpisode, IMAGE_BASE_URL } from '../services/tmdb';
+import { fetchShows, fetchAllShows, fetchLatestEpisode, IMAGE_BASE_URL } from '../services/tmdb';
 import SkeletonCard from '../components/SkeletonCard';
 
 const eraColor = {
@@ -23,19 +23,30 @@ export default function RecommendationsScreen({ route, navigation }) {
   const accent = eraColor[era] || '#F5E6D0';
   const [shows, setShows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [mode, setMode] = useState('discovery');
+
+  const loadShows = async (selectedMode) => {
+    setLoading(true);
+    const data = selectedMode === 'all' ? await fetchAllShows(region, era) : await fetchShows(region, era);
+    const withEpisodes = await Promise.all(
+      data.map(async (show) => {
+        const latestEpisode = await fetchLatestEpisode(show.id);
+        return { ...show, latestEpisode };
+      })
+    );
+    setShows(withEpisodes);
+    setLoading(false);
+  };
 
   useEffect(() => {
-    fetchShows(region, era).then(async (data) => {
-      const withEpisodes = await Promise.all(
-        data.map(async (show) => {
-          const latestEpisode = await fetchLatestEpisode(show.id);
-          return { ...show, latestEpisode };
-        })
-      );
-      setShows(withEpisodes);
-      setLoading(false);
-    });
+    loadShows(mode);
   }, [region, era]);
+
+  const handleModeSwitch = (selectedMode) => {
+    if (selectedMode === mode) return;
+    setMode(selectedMode);
+    loadShows(selectedMode);
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -45,6 +56,24 @@ export default function RecommendationsScreen({ route, navigation }) {
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{region}</Text>
         <Text style={styles.headerSub}>{era} shows</Text>
+
+        <View style={styles.toggle}>
+          <TouchableOpacity
+            style={[styles.toggleBtn, mode === 'discovery' && { backgroundColor: accent }]}
+            onPress={() => handleModeSwitch('discovery')}
+          >
+            <Text style={[styles.toggleText, mode === 'discovery' && { color: '#1C1C1E' }]}>Discovery</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.toggleBtn, mode === 'all' && { backgroundColor: accent }]}
+            onPress={() => handleModeSwitch('all')}
+          >
+            <Text style={[styles.toggleText, mode === 'all' && { color: '#1C1C1E' }]}>View All</Text>
+          </TouchableOpacity>
+        </View>
+        {mode === 'discovery' && (
+          <Text style={styles.discoveryHint}>A fresh set of picks every time you visit</Text>
+        )}
       </View>
 
       {loading ? (
@@ -128,6 +157,30 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#A08060',
     marginTop: 2,
+  },
+  toggle: {
+    flexDirection: 'row',
+    backgroundColor: '#2A2A2C',
+    borderRadius: 10,
+    padding: 3,
+    marginTop: 14,
+    alignSelf: 'flex-start',
+  },
+  toggleBtn: {
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  toggleText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#A08060',
+  },
+  discoveryHint: {
+    fontSize: 12,
+    color: '#6B6B70',
+    marginTop: 8,
+    fontStyle: 'italic',
   },
   emptyContainer: {
     flex: 1,

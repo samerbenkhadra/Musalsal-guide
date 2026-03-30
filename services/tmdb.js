@@ -38,33 +38,53 @@ export const fetchLatestEpisode = async (showId) => {
   }
 };
 
-export const fetchShows = async (region, era) => {
+const buildParams = (region, era, page) => {
   const { country, language } = regionCountry[region] || {};
   const dateRange = eraDateRange[era] || {};
-  const randomPage = Math.floor(Math.random() * 4) + 1;
 
-  let params = `api_key=${API_KEY}&sort_by=popularity.desc&page=${randomPage}`;
-
+  let params = `api_key=${API_KEY}&sort_by=popularity.desc&page=${page}`;
   if (language) params += `&with_original_language=${language}`;
   if (country) params += `&with_origin_country=${country}`;
   if (dateRange.gte) params += `&first_air_date.gte=${dateRange.gte}`;
   if (dateRange.lte) params += `&first_air_date.lte=${dateRange.lte}`;
+  return params;
+};
 
+const filterResults = (results, era) => {
+  const dateRange = eraDateRange[era] || {};
+  let filtered = results.filter((s) => s.poster_path);
+  if (era === 'Ramadan' && dateRange.months) {
+    filtered = filtered.filter((s) => {
+      if (!s.first_air_date) return false;
+      const month = new Date(s.first_air_date).getMonth() + 1;
+      return dateRange.months.includes(month);
+    });
+  }
+  return filtered;
+};
+
+export const fetchShows = async (region, era) => {
+  const randomPage = Math.floor(Math.random() * 4) + 1;
   try {
-    const response = await fetch(`${BASE_URL}/discover/tv?${params}`);
+    const response = await fetch(`${BASE_URL}/discover/tv?${buildParams(region, era, randomPage)}`);
     const data = await response.json();
-    let results = (data.results || []).filter((s) => s.poster_path);
+    return shuffleArray(filterResults(data.results || [], era)).slice(0, 8);
+  } catch (error) {
+    console.error('TMDB error:', error);
+    return [];
+  }
+};
 
-    // For Ramadan, filter by shows that aired in March-May
-    if (era === 'Ramadan' && dateRange.months) {
-      results = results.filter((s) => {
-        if (!s.first_air_date) return false;
-        const month = new Date(s.first_air_date).getMonth() + 1;
-        return dateRange.months.includes(month);
-      });
-    }
-
-    return shuffleArray(results).slice(0, 8);
+export const fetchAllShows = async (region, era) => {
+  try {
+    const pages = await Promise.all(
+      [1, 2, 3, 4, 5].map((page) =>
+        fetch(`${BASE_URL}/discover/tv?${buildParams(region, era, page)}`).then((r) => r.json())
+      )
+    );
+    const allResults = pages.flatMap((data) => filterResults(data.results || [], era));
+    const unique = allResults.filter((show, index, self) => self.findIndex((s) => s.id === show.id) === index);
+    return unique;
   } catch (error) {
     console.error('TMDB error:', error);
     return [];
