@@ -14,7 +14,6 @@ import { IMAGE_BASE_URL } from '../services/tmdb';
 export default function EpisodeDetailScreen({ route, navigation }) {
   const { show, accent } = route.params;
   const year = show.first_air_date ? show.first_air_date.split('-')[0] : '';
-  const rating = show.vote_average ? show.vote_average.toFixed(1) : null;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -34,11 +33,6 @@ export default function EpisodeDetailScreen({ route, navigation }) {
           {year ? (
             <View style={[styles.badge, { backgroundColor: accent + '30', borderColor: accent }]}>
               <Text style={[styles.badgeText, { color: accent }]}>{year}</Text>
-            </View>
-          ) : null}
-          {rating ? (
-            <View style={[styles.badge, { backgroundColor: accent + '30', borderColor: accent }]}>
-              <Text style={[styles.badgeText, { color: accent }]}>⭐ {rating}</Text>
             </View>
           ) : null}
         </View>
