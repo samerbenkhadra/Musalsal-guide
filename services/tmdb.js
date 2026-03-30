@@ -47,11 +47,11 @@ export const fetchLatestEpisode = async (showId) => {
   }
 };
 
-const buildParams = (region, era, page) => {
+const buildParams = (region, era, page, sortBy = 'popularity.desc') => {
   const { country, language } = regionCountry[region] || {};
   const dateRange = eraDateRange[era] || {};
 
-  let params = `api_key=${API_KEY}&sort_by=popularity.desc&page=${page}`;
+  let params = `api_key=${API_KEY}&sort_by=${sortBy}&page=${page}`;
   if (language) params += `&with_original_language=${language}`;
   if (country) params += `&with_origin_country=${country}`;
   if (dateRange.gte) params += `&first_air_date.gte=${dateRange.gte}`;
@@ -92,6 +92,22 @@ export const fetchAllShows = async (region, era) => {
       )
     );
     const allResults = pages.flatMap((data) => filterResults(data.results || [], era));
+    const unique = allResults.filter((show, index, self) => self.findIndex((s) => s.id === show.id) === index);
+    return unique;
+  } catch (error) {
+    console.error('TMDB error:', error);
+    return [];
+  }
+};
+
+export const fetchNewReleases = async (region) => {
+  try {
+    const pages = await Promise.all(
+      [1, 2, 3].map((page) =>
+        fetch(`${BASE_URL}/discover/tv?${buildParams(region, 'Recent', page, 'first_air_date.desc')}`).then((r) => r.json())
+      )
+    );
+    const allResults = pages.flatMap((data) => filterResults(data.results || [], 'Recent'));
     const unique = allResults.filter((show, index, self) => self.findIndex((s) => s.id === show.id) === index);
     return unique;
   } catch (error) {

@@ -8,7 +8,7 @@ import {
   SafeAreaView,
   Image,
 } from 'react-native';
-import { fetchShows, fetchAllShows, fetchLatestEpisode, IMAGE_BASE_URL } from '../services/tmdb';
+import { fetchShows, fetchAllShows, fetchNewReleases, fetchLatestEpisode, IMAGE_BASE_URL } from '../services/tmdb';
 import SkeletonCard from '../components/SkeletonCard';
 
 const eraColor = {
@@ -27,7 +27,10 @@ export default function RecommendationsScreen({ route, navigation }) {
 
   const loadShows = async (selectedMode) => {
     setLoading(true);
-    const data = selectedMode === 'all' ? await fetchAllShows(region, era) : await fetchShows(region, era);
+    let data;
+    if (selectedMode === 'all' && era === 'Recent') data = await fetchNewReleases(region);
+    else if (selectedMode === 'all') data = await fetchAllShows(region, era);
+    else data = await fetchShows(region, era);
     const withEpisodes = await Promise.all(
       data.map(async (show) => {
         const latestEpisode = await fetchLatestEpisode(show.id);
@@ -73,6 +76,9 @@ export default function RecommendationsScreen({ route, navigation }) {
         </View>
         {mode === 'discovery' && (
           <Text style={styles.discoveryHint}>A fresh set of picks every time you visit</Text>
+        )}
+        {mode === 'all' && era === 'Recent' && (
+          <Text style={styles.discoveryHint}>Most recently aired shows first</Text>
         )}
       </View>
 
