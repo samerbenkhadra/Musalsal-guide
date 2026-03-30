@@ -46,7 +46,7 @@ export default function EpisodeDetailScreen({ route, navigation }) {
         body: JSON.stringify({
           model: 'claude-haiku-4-5-20251001',
           max_tokens: 512,
-          system: `You are a knowledgeable assistant for the Arabic TV show "${show.name}". Here is a description: ${show.overview || 'No description available.'}. Use this description as well as your own knowledge about the show to give detailed, helpful answers. Write in plain conversational text only — no markdown, no bullet points with *, no # headings, no bold with **. If the user writes in Arabic, respond in Arabic.`,
+          system: `You are a knowledgeable assistant for the Arabic TV show "${show.name}". Here is a description: ${show.overview || 'No description available.'}. Use this description as well as your own knowledge about the show to answer questions. Keep responses short and conversational — 2 to 3 sentences maximum. End each response with one natural follow-up question to keep the conversation going. Write in plain text only — no markdown, no bullet points with *, no # headings, no bold with **. If the user writes in Arabic, respond in Arabic.`,
           messages: updatedMessages,
         }),
       });
