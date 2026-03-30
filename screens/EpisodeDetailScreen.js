@@ -94,9 +94,10 @@ const styles = StyleSheet.create({
   },
   poster: {
     width: '100%',
-    height: 320,
+    aspectRatio: 2 / 3,
     borderRadius: 16,
     marginBottom: 16,
+    resizeMode: 'cover',
   },
   metaRow: {
     flexDirection: 'row',
