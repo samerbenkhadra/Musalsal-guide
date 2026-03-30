@@ -27,6 +27,15 @@ const shuffleArray = (array) => {
   return shuffled;
 };
 
+export const fetchShowById = async (showId) => {
+  try {
+    const res = await fetch(`${BASE_URL}/tv/${showId}?api_key=${API_KEY}`);
+    return await res.json();
+  } catch (error) {
+    return null;
+  }
+};
+
 export const fetchLatestEpisode = async (showId) => {
   try {
     const showRes = await fetch(`${BASE_URL}/tv/${showId}?api_key=${API_KEY}`);

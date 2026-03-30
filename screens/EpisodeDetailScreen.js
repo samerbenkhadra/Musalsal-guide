@@ -22,9 +22,9 @@ export default function EpisodeDetailScreen({ route, navigation }) {
           <Text style={[styles.backText, { color: accent }]}>← Back</Text>
         </TouchableOpacity>
 
-        {show.poster_path ? (
+        {(show.poster_url || show.poster_path) ? (
           <Image
-            source={{ uri: `${IMAGE_BASE_URL}${show.poster_path}` }}
+            source={{ uri: show.poster_url || `${IMAGE_BASE_URL}${show.poster_path}` }}
             style={styles.poster}
           />
         ) : null}
