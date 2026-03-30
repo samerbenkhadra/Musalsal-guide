@@ -7,6 +7,7 @@ import {
   StyleSheet,
   SafeAreaView,
   Image,
+  Linking,
 } from 'react-native';
 import { IMAGE_BASE_URL } from '../services/tmdb';
 
@@ -51,6 +52,13 @@ export default function EpisodeDetailScreen({ route, navigation }) {
             {show.overview || 'No description available.'}
           </Text>
         </Section>
+
+        <TouchableOpacity
+          style={[styles.watchBtn, { backgroundColor: accent }]}
+          onPress={() => Linking.openURL(`https://www.google.com/search?q=watch+${encodeURIComponent(show.name)}`)}
+        >
+          <Text style={styles.watchBtnText}>Where to watch →</Text>
+        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
@@ -151,5 +159,16 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#C9A880',
     lineHeight: 24,
+  },
+  watchBtn: {
+    borderRadius: 14,
+    paddingVertical: 16,
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  watchBtnText: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1C1C1E',
   },
 });
