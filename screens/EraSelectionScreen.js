@@ -175,7 +175,7 @@ export default function EraSelectionScreen({ route, navigation }) {
               onPress={() => navigation.navigate('Recommendations', { region, era: era.name })}
             >
               <Text style={styles.emoji}>{era.emoji}</Text>
-              <Text style={[styles.label, { color: era.color }]}>{era.name}</Text>
+              <Text style={[styles.label, { color: era.color }]}>{language === 'ar' ? era.nameAr : era.name}</Text>
               <Text style={styles.description}>{era.description}</Text>
             </TouchableOpacity>
           ))}
