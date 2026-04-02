@@ -132,10 +132,10 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
   },
   subtitle: {
-    fontSize: 13,
+    fontSize: 15,
     color: '#A08060',
-    marginTop: 3,
-    maxWidth: 220,
+    marginTop: 4,
+    maxWidth: 240,
   },
   langToggle: {
     flexDirection: 'row',
@@ -161,17 +161,17 @@ const styles = StyleSheet.create({
   },
   highlightCard: {
     backgroundColor: '#2A2A2C',
-    borderRadius: 14,
-    padding: 12,
-    marginBottom: 16,
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
   },
   highlightBody: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 12,
   },
   highlightPoster: {
-    width: 52,
-    height: 78,
+    width: 70,
+    height: 105,
     borderRadius: 8,
   },
   highlightText: {
@@ -187,10 +187,10 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   highlightTitle: {
-    fontSize: 15,
+    fontSize: 17,
     fontWeight: '800',
     color: '#F5E6D0',
-    marginBottom: 4,
+    marginBottom: 6,
   },
   highlightWhy: {
     fontSize: 12,
