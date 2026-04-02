@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { fetchHighlight } from '../services/supabase';
 import { fetchShowById } from '../services/tmdb';
+import { useLanguage } from '../context/LanguageContext';
 
 const regions = [
   { name: 'Egyptian', emoji: '🇪🇬', color: '#C9637A', cardBg: '#52303C' },
@@ -22,6 +23,7 @@ const regions = [
 
 export default function RegionSelectionScreen({ navigation }) {
   const [highlight, setHighlight] = useState(null);
+  const { language, toggleLanguage } = useLanguage();
 
   useEffect(() => {
     fetchHighlight().then(setHighlight);
@@ -30,8 +32,15 @@ export default function RegionSelectionScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>MusalsalGo</Text>
-        <Text style={styles.subtitle}>Discover Middle Eastern TV. Find where to watch.</Text>
+        <View style={styles.titleRow}>
+          <View>
+            <Text style={styles.title}>MusalsalGo</Text>
+            <Text style={styles.subtitle}>Discover Middle Eastern TV. Find where to watch.</Text>
+          </View>
+          <TouchableOpacity style={styles.langToggle} onPress={toggleLanguage}>
+            <Text style={styles.langToggleText}>{language === 'en' ? 'EN' : 'AR'}</Text>
+          </TouchableOpacity>
+        </View>
 
         {highlight ? (
           <TouchableOpacity
@@ -100,7 +109,7 @@ const styles = StyleSheet.create({
   subtitle: {
     fontSize: 15,
     color: '#A08060',
-    marginBottom: 24,
+    marginTop: 4,
   },
   highlightCard: {
     backgroundColor: '#2A2A2C',
@@ -145,6 +154,24 @@ const styles = StyleSheet.create({
     color: '#FFAB76',
     fontStyle: 'italic',
     lineHeight: 17,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 24,
+  },
+  langToggle: {
+    backgroundColor: '#2A2A2C',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginTop: 4,
+  },
+  langToggleText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#F5E6D0',
   },
   sectionLabel: {
     fontSize: 13,

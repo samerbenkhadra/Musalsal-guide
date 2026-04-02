@@ -12,6 +12,7 @@ import {
 } from 'react-native';
 import { fetchShows, fetchAllShows, fetchNewReleases, fetchLatestEpisode, IMAGE_BASE_URL } from '../services/tmdb';
 import { getShowScores, TRAITS } from '../services/scoring';
+import { useLanguage } from '../context/LanguageContext';
 import SkeletonCard from '../components/SkeletonCard';
 
 const eraColor = {
@@ -24,6 +25,7 @@ const eraColor = {
 export default function RecommendationsScreen({ route, navigation }) {
   const { region, era } = route.params;
   const accent = eraColor[era] || '#F5E6D0';
+  const { language } = useLanguage();
   const [shows, setShows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState('discovery');
@@ -34,9 +36,9 @@ export default function RecommendationsScreen({ route, navigation }) {
   const loadShows = async (selectedMode) => {
     setLoading(true);
     let data;
-    if (selectedMode === 'all' && era === 'Recent') data = await fetchNewReleases(region);
-    else if (selectedMode === 'all') data = await fetchAllShows(region, era);
-    else data = await fetchShows(region, era);
+    if (selectedMode === 'all' && era === 'Recent') data = await fetchNewReleases(region, language);
+    else if (selectedMode === 'all') data = await fetchAllShows(region, era, language);
+    else data = await fetchShows(region, era, language);
     const withEpisodes = await Promise.all(
       data.map(async (show) => {
         const latestEpisode = await fetchLatestEpisode(show.id);
@@ -63,7 +65,7 @@ export default function RecommendationsScreen({ route, navigation }) {
 
   useEffect(() => {
     loadShows(mode);
-  }, [region, era]);
+  }, [region, era, language]);
 
   const handleModeSwitch = (selectedMode) => {
     if (selectedMode === mode) return;

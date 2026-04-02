@@ -13,12 +13,15 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
-import { IMAGE_BASE_URL, fetchWatchProviders } from '../services/tmdb';
+import { IMAGE_BASE_URL, fetchWatchProviders, fetchShowById } from '../services/tmdb';
 import { CLAUDE_API_KEY } from '../services/config';
 import { getShowScores, TRAITS } from '../services/scoring';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function EpisodeDetailScreen({ route, navigation }) {
-  const { show, accent } = route.params;
+  const { show: initialShow, accent } = route.params;
+  const { language } = useLanguage();
+  const [show, setShow] = useState(initialShow);
   const year = show.first_air_date ? show.first_air_date.split('-')[0] : '';
 
   const [messages, setMessages] = useState([]);
@@ -29,9 +32,19 @@ export default function EpisodeDetailScreen({ route, navigation }) {
   const scrollRef = useRef(null);
 
   useEffect(() => {
-    getShowScores(show).then(setScores);
-    if (show.id) fetchWatchProviders(show.id).then(setProviders);
+    getShowScores(initialShow).then(setScores);
+    if (initialShow.id) fetchWatchProviders(initialShow.id).then(setProviders);
   }, []);
+
+  useEffect(() => {
+    if (initialShow.id) {
+      fetchShowById(initialShow.id, language === 'ar' ? 'ar' : 'en').then((localized) => {
+        if (localized && (localized.name || localized.overview)) {
+          setShow({ ...initialShow, ...localized });
+        }
+      });
+    }
+  }, [language]);
 
   const sendMessage = async () => {
     const text = input.trim();

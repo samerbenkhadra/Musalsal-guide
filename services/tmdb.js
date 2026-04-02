@@ -43,9 +43,9 @@ export const fetchWatchProviders = async (showId) => {
   }
 };
 
-export const fetchShowById = async (showId) => {
+export const fetchShowById = async (showId, language = 'en') => {
   try {
-    const res = await fetch(`${BASE_URL}/tv/${showId}?api_key=${API_KEY}`);
+    const res = await fetch(`${BASE_URL}/tv/${showId}?api_key=${API_KEY}&language=${language}`);
     return await res.json();
   } catch (error) {
     return null;
@@ -88,10 +88,10 @@ const filterResults = (results, era) => {
   return filtered;
 };
 
-export const fetchShows = async (region, era) => {
+export const fetchShows = async (region, era, language = 'en') => {
   const randomPage = Math.floor(Math.random() * 4) + 1;
   try {
-    const response = await fetch(`${BASE_URL}/discover/tv?${buildParams(region, era, randomPage)}`);
+    const response = await fetch(`${BASE_URL}/discover/tv?${buildParams(region, era, randomPage)}&language=${language}`);
     const data = await response.json();
     return shuffleArray(filterResults(data.results || [], era)).slice(0, 8);
   } catch (error) {
@@ -100,11 +100,11 @@ export const fetchShows = async (region, era) => {
   }
 };
 
-export const fetchAllShows = async (region, era) => {
+export const fetchAllShows = async (region, era, language = 'en') => {
   try {
     const pages = await Promise.all(
       [1, 2, 3, 4, 5].map((page) =>
-        fetch(`${BASE_URL}/discover/tv?${buildParams(region, era, page)}`).then((r) => r.json())
+        fetch(`${BASE_URL}/discover/tv?${buildParams(region, era, page)}&language=${language}`).then((r) => r.json())
       )
     );
     const allResults = pages.flatMap((data) => filterResults(data.results || [], era));
@@ -116,11 +116,11 @@ export const fetchAllShows = async (region, era) => {
   }
 };
 
-export const fetchNewReleases = async (region) => {
+export const fetchNewReleases = async (region, language = 'en') => {
   try {
     const pages = await Promise.all(
       [1, 2, 3].map((page) =>
-        fetch(`${BASE_URL}/discover/tv?${buildParams(region, 'Recent', page, 'first_air_date.desc')}`).then((r) => r.json())
+        fetch(`${BASE_URL}/discover/tv?${buildParams(region, 'Recent', page, 'first_air_date.desc')}&language=${language}`).then((r) => r.json())
       )
     );
     const allResults = pages.flatMap((data) => filterResults(data.results || [], 'Recent'));
