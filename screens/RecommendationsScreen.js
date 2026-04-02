@@ -97,10 +97,10 @@ export default function RecommendationsScreen({ route, navigation }) {
           </TouchableOpacity>
         </View>
         {mode === 'discovery' && (
-          <Text style={styles.discoveryHint}>A fresh set of picks every time you visit</Text>
+          <Text style={styles.discoveryHint}>{language === 'ar' ? 'اختيارات جديدة في كل زيارة' : 'A fresh set of picks every time you visit'}</Text>
         )}
         {mode === 'all' && era === 'Recent' && (
-          <Text style={styles.discoveryHint}>Most recently aired shows first</Text>
+          <Text style={styles.discoveryHint}>{language === 'ar' ? 'أحدث المسلسلات أولاً' : 'Most recently aired shows first'}</Text>
         )}
 
         <View style={styles.filterRow}>
@@ -119,7 +119,7 @@ export default function RecommendationsScreen({ route, navigation }) {
               </Text>
             </TouchableOpacity>
           ))}
-          {!scoringDone && <Text style={styles.scoringHint}>Scoring...</Text>}
+          {!scoringDone && <Text style={styles.scoringHint}>{language === 'ar' ? 'جارٍ التحليل...' : 'Scoring...'}</Text>}
         </View>
         {activeFilter && scoringDone && (
           <View style={[styles.activeFilterBadge, { backgroundColor: TRAITS.find(t => t.key === activeFilter)?.color }]}>
