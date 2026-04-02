@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useLanguage } from '../context/LanguageContext';
 import {
   View,
   Text,
@@ -8,10 +9,10 @@ import {
 } from 'react-native';
 
 const eras = [
-  { name: 'Classic', emoji: '📼', description: 'Before 2010', color: '#FFAB76', cardBg: '#4A3020' },
-  { name: 'Modern', emoji: '📺', description: '2010 – 2019', color: '#B39DDB', cardBg: '#302848' },
-  { name: 'Recent', emoji: '🔥', description: '2020 onwards', color: '#E8A0BF', cardBg: '#48202E' },
-  { name: 'Ramadan', emoji: '🌙', description: 'Ramadan specials', color: '#7AC9C9', cardBg: '#203848' },
+  { name: 'Classic', nameAr: 'كلاسيكي', emoji: '📼', description: 'Before 2010', descriptionAr: 'قبل 2010', color: '#FFAB76', cardBg: '#4A3020' },
+  { name: 'Modern', nameAr: 'حديث', emoji: '📺', description: '2010 – 2019', descriptionAr: '2010 – 2019', color: '#B39DDB', cardBg: '#302848' },
+  { name: 'Recent', nameAr: 'حديث جداً', emoji: '🔥', description: '2020 onwards', descriptionAr: '2020 وما بعدها', color: '#E8A0BF', cardBg: '#48202E' },
+  { name: 'Ramadan', nameAr: 'رمضان', emoji: '🌙', description: 'Ramadan specials', descriptionAr: 'مسلسلات رمضان', color: '#7AC9C9', cardBg: '#203848' },
 ];
 
 const regionFacts = {
@@ -151,6 +152,7 @@ const regionFacts = {
 
 export default function EraSelectionScreen({ route, navigation }) {
   const { region } = route.params;
+  const { language } = useLanguage();
   const facts = regionFacts[region] || regionFacts['All Arabic'];
   const [fact] = useState(() => facts[Math.floor(Math.random() * facts.length)]);
 
@@ -162,7 +164,7 @@ export default function EraSelectionScreen({ route, navigation }) {
         </TouchableOpacity>
 
         <Text style={styles.title}>{region}</Text>
-        <Text style={styles.subtitle}>Now pick an era</Text>
+        <Text style={styles.subtitle}>{language === 'ar' ? 'اختر الحقبة الزمنية' : 'Now pick an era'}</Text>
 
         <View style={styles.grid}>
           {eras.map((era) => (

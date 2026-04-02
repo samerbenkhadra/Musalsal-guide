@@ -13,12 +13,12 @@ import { fetchShowById } from '../services/tmdb';
 import { useLanguage } from '../context/LanguageContext';
 
 const regions = [
-  { name: 'Egyptian', emoji: '🇪🇬', color: '#C9637A', cardBg: '#52303C' },
-  { name: 'Turkish', emoji: '🇹🇷', color: '#C97A63', cardBg: '#523830' },
-  { name: 'Gulf', emoji: '🇸🇦', color: '#7AC963', cardBg: '#305238' },
-  { name: 'Syrian', emoji: '🇸🇾', color: '#637AC9', cardBg: '#303852' },
-  { name: 'Lebanese', emoji: '🇱🇧', color: '#C96363', cardBg: '#523030' },
-  { name: 'All Arabic', emoji: '🌍', color: '#B39DDB', cardBg: '#30304A' },
+  { name: 'Egyptian', nameAr: 'مصري', emoji: '🇪🇬', color: '#C9637A', cardBg: '#52303C' },
+  { name: 'Turkish', nameAr: 'تركي', emoji: '🇹🇷', color: '#C97A63', cardBg: '#523830' },
+  { name: 'Gulf', nameAr: 'خليجي', emoji: '🇸🇦', color: '#7AC963', cardBg: '#305238' },
+  { name: 'Syrian', nameAr: 'سوري', emoji: '🇸🇾', color: '#637AC9', cardBg: '#303852' },
+  { name: 'Lebanese', nameAr: 'لبناني', emoji: '🇱🇧', color: '#C96363', cardBg: '#523030' },
+  { name: 'All Arabic', nameAr: 'كل العربي', emoji: '🌍', color: '#B39DDB', cardBg: '#30304A' },
 ];
 
 export default function RegionSelectionScreen({ navigation }) {
@@ -32,16 +32,32 @@ export default function RegionSelectionScreen({ navigation }) {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        <View style={styles.titleRow}>
+
+        {/* Header */}
+        <View style={styles.header}>
           <View>
             <Text style={styles.title}>MusalsalGo</Text>
-            <Text style={styles.subtitle}>Discover Middle Eastern TV. Find where to watch.</Text>
+            <Text style={styles.subtitle}>
+              {language === 'ar' ? 'اكتشف مسلسلات الشرق الأوسط. اعرف أين تشاهدها.' : 'Discover Middle Eastern TV. Find where to watch.'}
+            </Text>
           </View>
-          <TouchableOpacity style={styles.langToggle} onPress={toggleLanguage}>
-            <Text style={styles.langToggleText}>{language === 'en' ? 'EN' : 'AR'}</Text>
-          </TouchableOpacity>
+          <View style={styles.langToggle}>
+            <TouchableOpacity
+              style={[styles.langBtn, language === 'en' && styles.langBtnActive]}
+              onPress={() => language !== 'en' && toggleLanguage()}
+            >
+              <Text style={[styles.langBtnText, language === 'en' && styles.langBtnTextActive]}>EN</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.langBtn, language === 'ar' && styles.langBtnActive]}
+              onPress={() => language !== 'ar' && toggleLanguage()}
+            >
+              <Text style={[styles.langBtnText, language === 'ar' && styles.langBtnTextActive]}>AR</Text>
+            </TouchableOpacity>
+          </View>
         </View>
 
+        {/* Highlight of the Week */}
         {highlight ? (
           <TouchableOpacity
             style={styles.highlightCard}
@@ -53,24 +69,27 @@ export default function RegionSelectionScreen({ navigation }) {
               navigation.navigate('EpisodeDetail', { show, accent: '#FFAB76' });
             }}
           >
-            <Text style={styles.highlightBadge}>⭐ Highlight of the Week</Text>
             <View style={styles.highlightBody}>
               {highlight.poster_url ? (
                 <Image source={{ uri: highlight.poster_url }} style={styles.highlightPoster} />
               ) : null}
               <View style={styles.highlightText}>
+                <Text style={styles.highlightBadge}>⭐ {language === 'ar' ? 'أبرز مسلسل الأسبوع' : 'Highlight of the Week'}</Text>
                 <Text style={styles.highlightTitle}>{highlight.title}</Text>
-                <Text style={styles.highlightDesc} numberOfLines={3}>{highlight.description}</Text>
                 {highlight.why_we_picked ? (
-                  <Text style={styles.highlightWhy}>"{highlight.why_we_picked}"</Text>
+                  <Text style={styles.highlightWhy} numberOfLines={2}>"{highlight.why_we_picked}"</Text>
                 ) : null}
               </View>
             </View>
           </TouchableOpacity>
         ) : null}
 
-        <Text style={styles.sectionLabel}>Choose your region</Text>
+        {/* Region label */}
+        <Text style={styles.sectionLabel}>
+          {language === 'ar' ? 'تصفح حسب بلد الإنتاج' : 'Browse shows by country of origin'}
+        </Text>
 
+        {/* Region grid */}
         <View style={styles.grid}>
           {regions.map((region) => (
             <TouchableOpacity
@@ -80,10 +99,11 @@ export default function RegionSelectionScreen({ navigation }) {
               onPress={() => navigation.navigate('EraSelection', { region: region.name })}
             >
               <Text style={styles.emoji}>{region.emoji}</Text>
-              <Text style={[styles.label, { color: region.color }]}>{region.name}</Text>
+              <Text style={[styles.label, { color: region.color }]}>{language === 'ar' ? region.nameAr : region.name}</Text>
             </TouchableOpacity>
           ))}
         </View>
+
       </ScrollView>
     </SafeAreaView>
   );
@@ -99,55 +119,78 @@ const styles = StyleSheet.create({
     paddingTop: 48,
     paddingBottom: 32,
   },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 16,
+  },
   title: {
-    fontSize: 30,
+    fontSize: 28,
     fontWeight: '800',
     color: '#F5E6D0',
     letterSpacing: 0.5,
-    marginBottom: 6,
   },
   subtitle: {
-    fontSize: 15,
+    fontSize: 13,
     color: '#A08060',
-    marginTop: 4,
+    marginTop: 3,
+    maxWidth: 220,
+  },
+  langToggle: {
+    flexDirection: 'row',
+    backgroundColor: '#2A2A2C',
+    borderRadius: 8,
+    padding: 3,
+  },
+  langBtn: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  langBtnActive: {
+    backgroundColor: '#F5E6D0',
+  },
+  langBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#6B6B70',
+  },
+  langBtnTextActive: {
+    color: '#1C1C1E',
   },
   highlightCard: {
     backgroundColor: '#2A2A2C',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 28,
-  },
-  highlightBadge: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#FFAB76',
-    letterSpacing: 0.5,
-    marginBottom: 12,
-    textTransform: 'uppercase',
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 16,
   },
   highlightBody: {
     flexDirection: 'row',
-    gap: 12,
+    gap: 10,
   },
   highlightPoster: {
-    width: 70,
-    height: 105,
+    width: 52,
+    height: 78,
     borderRadius: 8,
   },
   highlightText: {
     flex: 1,
+    justifyContent: 'center',
+  },
+  highlightBadge: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#FFAB76',
+    letterSpacing: 0.5,
+    marginBottom: 4,
+    textTransform: 'uppercase',
   },
   highlightTitle: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: '800',
     color: '#F5E6D0',
-    marginBottom: 6,
-  },
-  highlightDesc: {
-    fontSize: 13,
-    color: '#A08060',
-    lineHeight: 19,
-    marginBottom: 6,
+    marginBottom: 4,
   },
   highlightWhy: {
     fontSize: 12,
@@ -155,31 +198,13 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     lineHeight: 17,
   },
-  titleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 24,
-  },
-  langToggle: {
-    backgroundColor: '#2A2A2C',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    marginTop: 4,
-  },
-  langToggleText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#F5E6D0',
-  },
   sectionLabel: {
     fontSize: 13,
     fontWeight: '600',
     color: '#6B6B70',
     letterSpacing: 1,
     textTransform: 'uppercase',
-    marginBottom: 14,
+    marginBottom: 12,
   },
   grid: {
     flexDirection: 'row',
