@@ -26,6 +26,10 @@ export default function RecommendationsScreen({ route, navigation }) {
   const { region, era } = route.params;
   const accent = eraColor[era] || '#F5E6D0';
   const { language } = useLanguage();
+  const regionNamesAr = {
+    Egyptian: 'مصري', Turkish: 'تركي', Gulf: 'خليجي',
+    Syrian: 'سوري', Lebanese: 'لبناني', 'All Arabic': 'كل العربي',
+  };
   const [shows, setShows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState('discovery');
@@ -79,8 +83,8 @@ export default function RecommendationsScreen({ route, navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Text style={[styles.backText, { color: accent }]}>← Back</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{region}</Text>
-        <Text style={styles.headerSub}>{era} shows</Text>
+        <Text style={styles.headerTitle}>{language === 'ar' ? regionNamesAr[region] || region : region}</Text>
+        <Text style={styles.headerSub}>{language === 'ar' ? { Classic: 'مسلسلات كلاسيكية', Modern: 'مسلسلات حديثة', Recent: 'مسلسلات حديثة جداً', Ramadan: 'مسلسلات رمضان' }[era] : `${era} shows`}</Text>
 
         <View style={styles.toggle}>
           <TouchableOpacity
