@@ -153,6 +153,10 @@ const regionFacts = {
 export default function EraSelectionScreen({ route, navigation }) {
   const { region } = route.params;
   const { language } = useLanguage();
+  const regionNamesAr = {
+    Egyptian: 'مصري', Turkish: 'تركي', Gulf: 'خليجي',
+    Syrian: 'سوري', Lebanese: 'لبناني', 'All Arabic': 'كل العربي',
+  };
   const facts = regionFacts[region] || regionFacts['All Arabic'];
   const [fact] = useState(() => facts[Math.floor(Math.random() * facts.length)]);
 
@@ -163,7 +167,7 @@ export default function EraSelectionScreen({ route, navigation }) {
           <Text style={styles.backText}>← Back</Text>
         </TouchableOpacity>
 
-        <Text style={styles.title}>{region}</Text>
+        <Text style={styles.title}>{language === 'ar' ? regionNamesAr[region] || region : region}</Text>
         <Text style={styles.subtitle}>{language === 'ar' ? 'اختر الحقبة الزمنية' : 'Now pick an era'}</Text>
 
         <View style={styles.grid}>

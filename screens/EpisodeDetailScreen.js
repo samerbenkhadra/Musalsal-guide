@@ -21,6 +21,14 @@ import { useLanguage } from '../context/LanguageContext';
 export default function EpisodeDetailScreen({ route, navigation }) {
   const { show: initialShow, accent } = route.params;
   const { language } = useLanguage();
+  const t = {
+    vibeCheck: language === 'ar' ? 'تحليل المسلسل' : 'Vibe Check',
+    about: language === 'ar' ? 'عن هذا المسلسل' : 'About this show',
+    ask: language === 'ar' ? 'اسأل عن هذا المسلسل' : 'Ask about this show',
+    whereToWatch: language === 'ar' ? 'أين تشاهده' : 'Where to watch',
+    askPlaceholder: language === 'ar' ? 'اسأل سؤالاً...' : 'Ask a question...',
+    chatHint: language === 'ar' ? 'اسأل أي شيء — ماذا تريد أن تعرف عن المسلسل؟' : 'Ask anything — what do you want to know about the show?',
+  };
   const [show, setShow] = useState(initialShow);
   const year = show.first_air_date ? show.first_air_date.split('-')[0] : '';
 
@@ -120,7 +128,7 @@ export default function EpisodeDetailScreen({ route, navigation }) {
           <View style={styles.divider} />
 
           {scores ? (
-            <Section title="Vibe Check" accent={accent}>
+            <Section title={t.vibeCheck} accent={accent}>
               {TRAITS.map((trait) => (
                 <View key={trait.key} style={styles.traitRow}>
                   <Text style={styles.traitLabel}>{trait.label}</Text>
@@ -132,21 +140,21 @@ export default function EpisodeDetailScreen({ route, navigation }) {
               ))}
             </Section>
           ) : (
-            <Section title="Vibe Check" accent={accent}>
+            <Section title={t.vibeCheck} accent={accent}>
               <ActivityIndicator size="small" color={accent} />
             </Section>
           )}
 
-          <Section title="About this show" accent={accent}>
+          <Section title={t.about} accent={accent}>
             <Text style={styles.bodyText}>
               {show.overview || 'No description available.'}
             </Text>
           </Section>
 
-          <Section title="Ask about this show" accent={accent}>
+          <Section title={t.ask} accent={accent}>
             <View style={styles.chatMessages}>
               {messages.length === 0 && (
-                <Text style={styles.chatPlaceholder}>Ask anything — what do you want to know about the show?</Text>
+                <Text style={styles.chatPlaceholder}>{t.chatHint}</Text>
               )}
               {messages.map((msg, i) => (
                 <View
@@ -174,7 +182,7 @@ export default function EpisodeDetailScreen({ route, navigation }) {
                 style={styles.textInput}
                 value={input}
                 onChangeText={setInput}
-                placeholder="Ask a question..."
+                placeholder={t.askPlaceholder}
                 placeholderTextColor="#6B6B70"
                 multiline
                 onSubmitEditing={sendMessage}
@@ -189,7 +197,7 @@ export default function EpisodeDetailScreen({ route, navigation }) {
             </View>
           </Section>
 
-          <Section title="Where to watch" accent={accent}>
+          <Section title={t.whereToWatch} accent={accent}>
             {providers.length > 0 ? (
               <View style={styles.providersRow}>
                 {providers.map((p, i) => {
