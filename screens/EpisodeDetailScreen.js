@@ -179,17 +179,29 @@ export default function EpisodeDetailScreen({ route, navigation }) {
           <Section title="Where to watch" accent={accent}>
             {providers.length > 0 ? (
               <View style={styles.providersRow}>
-                {providers.map((p, i) => (
-                  <View key={i} style={styles.providerItem}>
+                {providers.map((p, i) => {
+                  const name = p.provider_name.toLowerCase();
+                  let url;
+                  if (name.includes('shahid')) url = `https://shahid.mbc.net/ar/search?q=${encodeURIComponent(show.name)}`;
+                  else if (name.includes('netflix')) url = `https://www.netflix.com/search?q=${encodeURIComponent(show.name)}`;
+                  else if (name.includes('osn')) url = `https://www.osnplus.com/search/${encodeURIComponent(show.name)}`;
+                  else if (name.includes('starz')) url = `https://www.starzplay.com/search?q=${encodeURIComponent(show.name)}`;
+                  else if (name.includes('disney')) url = `https://www.disneyplus.com/search/${encodeURIComponent(show.name)}`;
+                  else url = `https://www.google.com/search?q=watch+${encodeURIComponent(show.name)}+on+${encodeURIComponent(p.provider_name)}`;
+
+                  return (
+                  <TouchableOpacity key={i} style={styles.providerItem} onPress={() => Linking.openURL(url)}>
                     <Image
                       source={{ uri: `https://image.tmdb.org/t/p/w92${p.logo_path}` }}
                       style={styles.providerLogo}
                     />
                     <Text style={styles.providerName} numberOfLines={1}>{p.provider_name}</Text>
-                  </View>
-                ))}
+                  </TouchableOpacity>
+                  );
+                })}
               </View>
             ) : (
+
               <TouchableOpacity
                 onPress={() => {
                   const genre = show.original_language === 'tr' ? 'Turkish TV series streaming' : 'Arabic TV series streaming';
