@@ -13,7 +13,7 @@ import {
   Platform,
   ActivityIndicator,
 } from 'react-native';
-import { IMAGE_BASE_URL } from '../services/tmdb';
+import { IMAGE_BASE_URL, fetchWatchProviders } from '../services/tmdb';
 import { CLAUDE_API_KEY } from '../services/config';
 import { getShowScores, TRAITS } from '../services/scoring';
 
@@ -25,10 +25,12 @@ export default function EpisodeDetailScreen({ route, navigation }) {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [scores, setScores] = useState(null);
+  const [providers, setProviders] = useState([]);
   const scrollRef = useRef(null);
 
   useEffect(() => {
     getShowScores(show).then(setScores);
+    if (show.id) fetchWatchProviders(show.id).then(setProviders);
   }, []);
 
   const sendMessage = async () => {
@@ -174,12 +176,30 @@ export default function EpisodeDetailScreen({ route, navigation }) {
             </View>
           </Section>
 
-          <TouchableOpacity
-            style={[styles.watchBtn, { backgroundColor: accent }]}
-            onPress={() => Linking.openURL(`https://www.google.com/search?q=watch+${encodeURIComponent(show.name)}`)}
-          >
-            <Text style={styles.watchBtnText}>Where to watch →</Text>
-          </TouchableOpacity>
+          <Section title="Where to watch" accent={accent}>
+            {providers.length > 0 ? (
+              <View style={styles.providersRow}>
+                {providers.map((p, i) => (
+                  <View key={i} style={styles.providerItem}>
+                    <Image
+                      source={{ uri: `https://image.tmdb.org/t/p/w92${p.logo_path}` }}
+                      style={styles.providerLogo}
+                    />
+                    <Text style={styles.providerName} numberOfLines={1}>{p.provider_name}</Text>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <TouchableOpacity
+                onPress={() => {
+                  const genre = show.original_language === 'tr' ? 'Turkish TV series streaming' : 'Arabic TV series streaming';
+                  Linking.openURL(`https://www.google.com/search?q=watch+${encodeURIComponent(show.name)}+${encodeURIComponent(genre)}`);
+                }}
+              >
+                <Text style={[styles.bodyText, { color: accent }]}>Search online for streaming options →</Text>
+              </TouchableOpacity>
+            )}
+          </Section>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -312,16 +332,25 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'right',
   },
-  watchBtn: {
-    borderRadius: 14,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginBottom: 12,
+  providersRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
   },
-  watchBtnText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#1C1C1E',
+  providerItem: {
+    alignItems: 'center',
+    width: 60,
+  },
+  providerLogo: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    marginBottom: 4,
+  },
+  providerName: {
+    fontSize: 10,
+    color: '#A08060',
+    textAlign: 'center',
   },
   chatMessages: {
     marginBottom: 12,

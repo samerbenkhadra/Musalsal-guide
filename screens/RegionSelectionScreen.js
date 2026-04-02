@@ -31,7 +31,7 @@ export default function RegionSelectionScreen({ navigation }) {
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         <Text style={styles.title}>MusalsalGo</Text>
-        <Text style={styles.subtitle}>Browse less. Watch more.</Text>
+        <Text style={styles.subtitle}>Discover Middle Eastern TV. Find where to watch.</Text>
 
         {highlight ? (
           <TouchableOpacity
@@ -60,7 +60,7 @@ export default function RegionSelectionScreen({ navigation }) {
           </TouchableOpacity>
         ) : null}
 
-        <Text style={styles.sectionLabel}>Where's it from?</Text>
+        <Text style={styles.sectionLabel}>Choose your region</Text>
 
         <View style={styles.grid}>
           {regions.map((region) => (

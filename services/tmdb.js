@@ -27,6 +27,22 @@ const shuffleArray = (array) => {
   return shuffled;
 };
 
+export const fetchWatchProviders = async (showId) => {
+  try {
+    const res = await fetch(`${BASE_URL}/tv/${showId}/watch/providers?api_key=${API_KEY}`);
+    const data = await res.json();
+    // Try Middle East countries in order of relevance
+    const results = data.results || {};
+    const region = results['BH'] || results['SA'] || results['AE'] || results['EG'] || results['US'] || null;
+    if (!region) return [];
+    const providers = [...(region.flatrate || []), ...(region.free || []), ...(region.ads || [])];
+    const unique = providers.filter((p, index, self) => self.findIndex(x => x.provider_name === p.provider_name) === index);
+    return unique;
+  } catch {
+    return [];
+  }
+};
+
 export const fetchShowById = async (showId) => {
   try {
     const res = await fetch(`${BASE_URL}/tv/${showId}?api_key=${API_KEY}`);
