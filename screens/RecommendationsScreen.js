@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,9 @@ import {
   Modal,
   ScrollView,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
 import { fetchShows, fetchAllShows, fetchNewReleases, fetchLatestEpisode, IMAGE_BASE_URL } from '../services/tmdb';
+import { getWatchedShows, toggleWatched } from '../services/watchlist';
 import { getShowScores, TRAITS } from '../services/scoring';
 import { useLanguage } from '../context/LanguageContext';
 import SkeletonCard from '../components/SkeletonCard';
@@ -36,6 +38,11 @@ export default function RecommendationsScreen({ route, navigation }) {
   const [showScores, setShowScores] = useState({});
   const [activeFilter, setActiveFilter] = useState(null);
   const [scoringDone, setScoringDone] = useState(false);
+  const [watchedIds, setWatchedIds] = useState(new Set());
+
+  useFocusEffect(useCallback(() => {
+    getWatchedShows().then(setWatchedIds);
+  }, []));
 
   const loadShows = async (selectedMode) => {
     setLoading(true);
@@ -156,12 +163,17 @@ export default function RecommendationsScreen({ route, navigation }) {
               onPress={() => navigation.navigate('EpisodeDetail', { show: item, accent })}
             >
               <View style={[styles.accentBar, { backgroundColor: accent }]} />
-              {item.poster_path ? (
-                <Image
-                  source={{ uri: `${IMAGE_BASE_URL}${item.poster_path}` }}
-                  style={styles.poster}
-                />
-              ) : null}
+              <View style={styles.posterWrapper}>
+                {item.poster_path ? (
+                  <Image source={{ uri: `${IMAGE_BASE_URL}${item.poster_path}` }} style={styles.poster} />
+                ) : null}
+                <TouchableOpacity
+                  style={[styles.watchedBtn, watchedIds.has(item.id) && styles.watchedBtnActive]}
+                  onPress={async () => setWatchedIds(await toggleWatched(item.id))}
+                >
+                  <Text style={styles.watchedBtnText}>✓</Text>
+                </TouchableOpacity>
+              </View>
               <View style={styles.cardContent}>
                 <Text style={styles.showName} numberOfLines={1}>{item.name}</Text>
                 <Text style={[styles.meta, { color: accent }]}>
@@ -307,9 +319,36 @@ const styles = StyleSheet.create({
   accentBar: {
     width: 4,
   },
+  posterWrapper: {
+    position: 'relative',
+    width: 70,
+    height: 105,
+  },
   poster: {
     width: 70,
     height: 105,
+  },
+  watchedBtn: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#6B6B70',
+  },
+  watchedBtnActive: {
+    backgroundColor: '#4CAF50',
+    borderColor: '#4CAF50',
+  },
+  watchedBtnText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#fff',
   },
   cardContent: {
     flex: 1,

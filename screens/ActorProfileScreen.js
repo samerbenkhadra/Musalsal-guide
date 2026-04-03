@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { fetchPersonDetails, fetchPersonTVCredits, IMAGE_BASE_URL } from '../services/tmdb';
+import { getWatchedShows, toggleWatched } from '../services/watchlist';
 import { useLanguage } from '../context/LanguageContext';
 
 export default function ActorProfileScreen({ route, navigation }) {
@@ -20,6 +21,11 @@ export default function ActorProfileScreen({ route, navigation }) {
   const [shows, setShows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [bioExpanded, setBioExpanded] = useState(false);
+  const [watchedIds, setWatchedIds] = useState(new Set());
+
+  useEffect(() => {
+    getWatchedShows().then(setWatchedIds);
+  }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -64,6 +70,13 @@ export default function ActorProfileScreen({ route, navigation }) {
                   <Text style={styles.profileMeta}>{person.place_of_birth}</Text>
                 ) : null}
                 <Text style={styles.profileCredits}>{shows.length} {language === 'ar' ? 'مسلسل' : 'shows'}</Text>
+                {shows.filter(s => watchedIds.has(s.id)).length > 0 && (
+                  <Text style={styles.watchedCount}>
+                    {language === 'ar'
+                      ? `شاهدت ${shows.filter(s => watchedIds.has(s.id)).length} من ${shows.length}`
+                      : `You've watched ${shows.filter(s => watchedIds.has(s.id)).length}/${shows.length}`}
+                  </Text>
+                )}
               </View>
             </View>
 
@@ -90,10 +103,14 @@ export default function ActorProfileScreen({ route, navigation }) {
                   activeOpacity={0.85}
                   onPress={() => navigation.navigate('EpisodeDetail', { show, accent: '#FFAB76' })}
                 >
-                  <Image
-                    source={{ uri: `${IMAGE_BASE_URL}${show.poster_path}` }}
-                    style={styles.showPoster}
-                  />
+                  <View style={styles.showPosterWrapper}>
+                    <Image source={{ uri: `${IMAGE_BASE_URL}${show.poster_path}` }} style={styles.showPoster} />
+                    {watchedIds.has(show.id) && (
+                      <View style={styles.watchedOverlay}>
+                        <Text style={styles.watchedOverlayText}>✓</Text>
+                      </View>
+                    )}
+                  </View>
                   <Text style={styles.showName} numberOfLines={2}>{show.name}</Text>
                   {show.first_air_date ? (
                     <Text style={styles.showYear}>{show.first_air_date.split('-')[0]}</Text>
@@ -196,11 +213,38 @@ const styles = StyleSheet.create({
   showCard: {
     width: '30%',
   },
-  showPoster: {
+  showPosterWrapper: {
+    position: 'relative',
     width: '100%',
     aspectRatio: 2 / 3,
-    borderRadius: 10,
     marginBottom: 6,
+  },
+  showPoster: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 10,
+  },
+  watchedOverlay: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: '#4CAF50',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  watchedOverlayText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  watchedCount: {
+    fontSize: 13,
+    color: '#4CAF50',
+    fontWeight: '600',
+    marginTop: 2,
   },
   showName: {
     fontSize: 12,
