@@ -22,16 +22,17 @@ export default function ActorProfileScreen({ route, navigation }) {
 
   useEffect(() => {
     const load = async () => {
+      setLoading(true);
       const [details, credits] = await Promise.all([
-        fetchPersonDetails(personId),
-        fetchPersonTVCredits(personId),
+        fetchPersonDetails(personId, language),
+        fetchPersonTVCredits(personId, language),
       ]);
       setPerson(details);
       setShows(credits);
       setLoading(false);
     };
     load();
-  }, [personId]);
+  }, [personId, language]);
 
   return (
     <SafeAreaView style={styles.safe}>

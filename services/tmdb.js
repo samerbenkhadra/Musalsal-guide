@@ -37,18 +37,18 @@ export const searchPerson = async (query) => {
   }
 };
 
-export const fetchPersonDetails = async (personId) => {
+export const fetchPersonDetails = async (personId, language = 'en') => {
   try {
-    const res = await fetch(`${BASE_URL}/person/${personId}?api_key=${API_KEY}`);
+    const res = await fetch(`${BASE_URL}/person/${personId}?api_key=${API_KEY}&language=${language}`);
     return await res.json();
   } catch {
     return null;
   }
 };
 
-export const fetchPersonTVCredits = async (personId) => {
+export const fetchPersonTVCredits = async (personId, language = 'en') => {
   try {
-    const res = await fetch(`${BASE_URL}/person/${personId}/tv_credits?api_key=${API_KEY}`);
+    const res = await fetch(`${BASE_URL}/person/${personId}/tv_credits?api_key=${API_KEY}&language=${language}`);
     const data = await res.json();
     const credits = (data.cast || [])
       .filter((s) => s.poster_path)

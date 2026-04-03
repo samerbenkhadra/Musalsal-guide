@@ -72,13 +72,16 @@ export default function RegionSelectionScreen({ navigation }) {
 
   useEffect(() => {
     fetchHighlight().then(setHighlight);
-    loadPopularActors();
   }, []);
 
-  const loadPopularActors = async () => {
+  useEffect(() => {
+    loadPopularActors(language);
+  }, [language]);
+
+  const loadPopularActors = async (lang = 'en') => {
     const results = await Promise.all(
       POPULAR_ACTORS.map(async (a) => {
-        const res = await fetch(`https://api.themoviedb.org/3/person/${a.id}?api_key=df249df3a0df066640d620b5d876ef69`);
+        const res = await fetch(`https://api.themoviedb.org/3/person/${a.id}?api_key=df249df3a0df066640d620b5d876ef69&language=${lang}`);
         return await res.json();
       })
     );
