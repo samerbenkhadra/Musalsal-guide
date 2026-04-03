@@ -10,7 +10,7 @@ import {
   TextInput,
   ActivityIndicator,
 } from 'react-native';
-import { fetchHighlight } from '../services/supabase';
+import { fetchHighlight, fetchActorNameOverrides } from '../services/supabase';
 import { fetchShowById, searchPerson, IMAGE_BASE_URL } from '../services/tmdb';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -68,17 +68,23 @@ export default function RegionSelectionScreen({ navigation }) {
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [popularActors, setPopularActors] = useState([]);
+  const [actorNameOverrides, setActorNameOverrides] = useState({});
   const { language, toggleLanguage } = useLanguage();
 
   useEffect(() => {
     fetchHighlight().then(setHighlight);
-    loadPopularActors();
+    fetchActorNameOverrides().then(setActorNameOverrides);
+    loadPopularActors(language);
   }, []);
 
-  const loadPopularActors = async () => {
+  useEffect(() => {
+    loadPopularActors(language);
+  }, [language]);
+
+  const loadPopularActors = async (lang = 'en') => {
     const results = await Promise.all(
       POPULAR_ACTORS.map(async (a) => {
-        const res = await fetch(`https://api.themoviedb.org/3/person/${a.id}?api_key=df249df3a0df066640d620b5d876ef69`);
+        const res = await fetch(`https://api.themoviedb.org/3/person/${a.id}?api_key=df249df3a0df066640d620b5d876ef69&language=${lang}`);
         return await res.json();
       })
     );
@@ -216,14 +222,16 @@ export default function RegionSelectionScreen({ navigation }) {
                   <TouchableOpacity
                     key={actor.id}
                     style={styles.actorChip}
-                    onPress={() => navigation.navigate('ActorProfile', { personId: actor.id, personName: actor.name })}
+                    onPress={() => navigation.navigate('ActorProfile', { personId: actor.id, personName: actor.name, nameAr: actorNameOverrides[actor.id] || actor.name })}
                   >
                     {actor.profile_path ? (
                       <Image source={{ uri: `${IMAGE_BASE_URL}${actor.profile_path}` }} style={styles.actorPhoto} />
                     ) : (
                       <View style={styles.actorPhotoPlaceholder} />
                     )}
-                    <Text style={styles.actorName} numberOfLines={2}>{actor.name}</Text>
+                    <Text style={styles.actorName} numberOfLines={2}>
+                      {language === 'ar' ? (actorNameOverrides[actor.id] || actor.name) : actor.name}
+                    </Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>

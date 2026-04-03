@@ -14,7 +14,7 @@ import { fetchPersonDetails, fetchPersonTVCredits, IMAGE_BASE_URL } from '../ser
 import { useLanguage } from '../context/LanguageContext';
 
 export default function ActorProfileScreen({ route, navigation }) {
-  const { personId, personName } = route.params;
+  const { personId, personName, nameAr } = route.params;
   const { language } = useLanguage();
   const [person, setPerson] = useState(null);
   const [shows, setShows] = useState([]);
@@ -55,7 +55,7 @@ export default function ActorProfileScreen({ route, navigation }) {
                 <View style={styles.profilePhotoPlaceholder} />
               )}
               <View style={styles.profileInfo}>
-                <Text style={styles.profileName}>{person?.name || personName}</Text>
+                <Text style={styles.profileName}>{language === 'ar' ? (nameAr || person?.name || personName) : (person?.name || personName)}</Text>
                 {person?.birthday ? (
                   <Text style={styles.profileMeta}>{person.birthday.split('-')[0]}</Text>
                 ) : null}
