@@ -156,6 +156,11 @@ export default function RecommendationsScreen({ route, navigation }) {
             : shows}
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.list}
+          ListHeaderComponent={
+            <Text style={styles.watchHint}>
+              {language === 'ar' ? 'اضغط ✓ على المسلسلات التي شاهدتها' : "Tap ✓ on shows you've watched"}
+            </Text>
+          }
           renderItem={({ item }) => (
             <TouchableOpacity
               style={styles.card}
@@ -163,9 +168,17 @@ export default function RecommendationsScreen({ route, navigation }) {
               onPress={() => navigation.navigate('EpisodeDetail', { show: item, accent })}
             >
               <View style={[styles.accentBar, { backgroundColor: accent }]} />
-              {item.poster_path ? (
-                <Image source={{ uri: `${IMAGE_BASE_URL}${item.poster_path}` }} style={styles.poster} />
-              ) : null}
+              <View style={styles.posterWrapper}>
+                {item.poster_path ? (
+                  <Image source={{ uri: `${IMAGE_BASE_URL}${item.poster_path}` }} style={styles.poster} />
+                ) : null}
+                <TouchableOpacity
+                  style={[styles.watchedBtn, watchedIds.has(item.id) && styles.watchedBtnActive]}
+                  onPress={async () => setWatchedIds(await toggleWatched(item.id))}
+                >
+                  <Text style={styles.watchedBtnText}>✓</Text>
+                </TouchableOpacity>
+              </View>
               <View style={styles.cardContent}>
                 <Text style={styles.showName} numberOfLines={1}>{item.name}</Text>
                 <Text style={[styles.meta, { color: accent }]}>
@@ -182,14 +195,6 @@ export default function RecommendationsScreen({ route, navigation }) {
                   </View>
                 ) : null}
                 <Text style={[styles.readMore, { color: accent }]}>Read more →</Text>
-                <TouchableOpacity
-                  onPress={async (e) => { e.stopPropagation?.(); setWatchedIds(await toggleWatched(item.id)); }}
-                  style={styles.watchedTextBtn}
-                >
-                  <Text style={[styles.watchedTextBtnText, watchedIds.has(item.id) && styles.watchedTextBtnActive]}>
-                    {watchedIds.has(item.id) ? '✓ Watched' : '+ Mark as watched'}
-                  </Text>
-                </TouchableOpacity>
               </View>
             </TouchableOpacity>
           )}
@@ -319,20 +324,42 @@ const styles = StyleSheet.create({
   accentBar: {
     width: 4,
   },
+  posterWrapper: {
+    position: 'relative',
+    width: 70,
+    height: 105,
+  },
   poster: {
     width: 70,
     height: 105,
   },
-  watchedTextBtn: {
-    marginTop: 6,
+  watchedBtn: {
+    position: 'absolute',
+    bottom: 4,
+    right: 4,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderWidth: 1,
+    borderColor: '#6B6B70',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  watchedTextBtnText: {
+  watchedBtnActive: {
+    backgroundColor: '#4CAF50',
+    borderColor: '#4CAF50',
+  },
+  watchedBtnText: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  watchHint: {
     fontSize: 12,
-    fontWeight: '600',
     color: '#6B6B70',
-  },
-  watchedTextBtnActive: {
-    color: '#4CAF50',
+    fontStyle: 'italic',
+    marginBottom: 12,
   },
   cardContent: {
     flex: 1,
