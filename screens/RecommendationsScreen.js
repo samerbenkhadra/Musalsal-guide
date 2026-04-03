@@ -11,7 +11,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { fetchShows, fetchAllShows, fetchLatestEpisode, IMAGE_BASE_URL } from '../services/tmdb';
+import { fetchShows, fetchNewReleases, fetchLatestEpisode, IMAGE_BASE_URL } from '../services/tmdb';
 import { getWatchedShows, toggleWatched } from '../services/watchlist';
 import { getShowScores, TRAITS } from '../services/scoring';
 import { useLanguage } from '../context/LanguageContext';
@@ -39,7 +39,7 @@ export default function RecommendationsScreen({ route, navigation }) {
   const loadShows = async (selectedMode) => {
     setLoading(true);
     let data;
-    if (selectedMode === 'all') data = await fetchAllShows(region, null, language);
+    if (selectedMode === 'all') data = await fetchNewReleases(region, language);
     else data = await fetchShows(region, null, language);
     const withEpisodes = await Promise.all(
       data.map(async (show) => {
@@ -99,6 +99,9 @@ export default function RecommendationsScreen({ route, navigation }) {
         </View>
         {mode === 'discovery' && (
           <Text style={styles.discoveryHint}>{language === 'ar' ? 'اختيارات جديدة في كل زيارة' : 'A fresh set of picks every time you visit'}</Text>
+        )}
+        {mode === 'all' && (
+          <Text style={styles.discoveryHint}>{language === 'ar' ? 'الأحدث أولاً' : 'Latest first'}</Text>
         )}
 
         <View style={styles.filterRow}>
