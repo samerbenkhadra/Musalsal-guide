@@ -96,9 +96,9 @@ export const fetchLatestEpisode = async (showId) => {
   }
 };
 
-const buildParams = (region, era, page, sortBy = 'popularity.desc') => {
+const buildParams = (region, era = null, page, sortBy = 'popularity.desc') => {
   const { country, language } = regionCountry[region] || {};
-  const dateRange = eraDateRange[era] || {};
+  const dateRange = era ? (eraDateRange[era] || {}) : {};
 
   let params = `api_key=${API_KEY}&sort_by=${sortBy}&page=${page}`;
   if (language) params += `&with_original_language=${language}`;
@@ -108,14 +108,14 @@ const buildParams = (region, era, page, sortBy = 'popularity.desc') => {
   return params;
 };
 
-const filterResults = (results, era) => {
-  const dateRange = eraDateRange[era] || {};
+const filterResults = (results, era = null) => {
   let filtered = results.filter((s) => s.poster_path);
-  if (era === 'Ramadan' && dateRange.months) {
+  if (era === 'Ramadan') {
+    const months = eraDateRange.Ramadan.months;
     filtered = filtered.filter((s) => {
       if (!s.first_air_date) return false;
       const month = new Date(s.first_air_date).getMonth() + 1;
-      return dateRange.months.includes(month);
+      return months.includes(month);
     });
   }
   return filtered;

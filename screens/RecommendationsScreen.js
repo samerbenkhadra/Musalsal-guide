@@ -11,22 +11,14 @@ import {
   ScrollView,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { fetchShows, fetchAllShows, fetchNewReleases, fetchLatestEpisode, IMAGE_BASE_URL } from '../services/tmdb';
+import { fetchShows, fetchAllShows, fetchLatestEpisode, IMAGE_BASE_URL } from '../services/tmdb';
 import { getWatchedShows, toggleWatched } from '../services/watchlist';
 import { getShowScores, TRAITS } from '../services/scoring';
 import { useLanguage } from '../context/LanguageContext';
 import SkeletonCard from '../components/SkeletonCard';
 
-const eraColor = {
-  Classic: '#FFAB76',
-  Modern: '#B39DDB',
-  Recent: '#E8A0BF',
-  Ramadan: '#7AC9C9',
-};
-
 export default function RecommendationsScreen({ route, navigation }) {
-  const { region, era } = route.params;
-  const accent = eraColor[era] || '#F5E6D0';
+  const { region, accent = '#FFAB76' } = route.params;
   const { language } = useLanguage();
   const regionNamesAr = {
     Egyptian: 'مصري', Turkish: 'تركي', Gulf: 'خليجي',
@@ -47,9 +39,8 @@ export default function RecommendationsScreen({ route, navigation }) {
   const loadShows = async (selectedMode) => {
     setLoading(true);
     let data;
-    if (selectedMode === 'all' && era === 'Recent') data = await fetchNewReleases(region, language);
-    else if (selectedMode === 'all') data = await fetchAllShows(region, era, language);
-    else data = await fetchShows(region, era, language);
+    if (selectedMode === 'all') data = await fetchAllShows(region, null, language);
+    else data = await fetchShows(region, null, language);
     const withEpisodes = await Promise.all(
       data.map(async (show) => {
         const latestEpisode = await fetchLatestEpisode(show.id);
@@ -76,7 +67,7 @@ export default function RecommendationsScreen({ route, navigation }) {
 
   useEffect(() => {
     loadShows(mode);
-  }, [region, era, language]);
+  }, [region, language]);
 
   const handleModeSwitch = (selectedMode) => {
     if (selectedMode === mode) return;
@@ -91,7 +82,6 @@ export default function RecommendationsScreen({ route, navigation }) {
           <Text style={[styles.backText, { color: accent }]}>← Back</Text>
         </TouchableOpacity>
         <Text style={styles.headerTitle}>{language === 'ar' ? regionNamesAr[region] || region : region}</Text>
-        <Text style={styles.headerSub}>{language === 'ar' ? { Classic: 'مسلسلات كلاسيكية', Modern: 'مسلسلات حديثة', Recent: 'مسلسلات حديثة جداً', Ramadan: 'مسلسلات رمضان' }[era] : `${era} shows`}</Text>
 
         <View style={styles.toggle}>
           <TouchableOpacity
@@ -109,9 +99,6 @@ export default function RecommendationsScreen({ route, navigation }) {
         </View>
         {mode === 'discovery' && (
           <Text style={styles.discoveryHint}>{language === 'ar' ? 'اختيارات جديدة في كل زيارة' : 'A fresh set of picks every time you visit'}</Text>
-        )}
-        {mode === 'all' && era === 'Recent' && (
-          <Text style={styles.discoveryHint}>{language === 'ar' ? 'أحدث المسلسلات أولاً' : 'Most recently aired shows first'}</Text>
         )}
 
         <View style={styles.filterRow}>

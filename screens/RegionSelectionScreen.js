@@ -252,7 +252,7 @@ export default function RegionSelectionScreen({ navigation }) {
                   key={region.name}
                   style={[styles.card, { backgroundColor: region.cardBg }]}
                   activeOpacity={0.8}
-                  onPress={() => navigation.navigate('EraSelection', { region: region.name })}
+                  onPress={() => navigation.navigate('Recommendations', { region: region.name, accent: region.color })}
                 >
                   <Text style={styles.emoji}>{region.emoji}</Text>
                   <Text style={[styles.label, { color: region.color }]}>{language === 'ar' ? region.nameAr : region.name}</Text>
