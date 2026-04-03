@@ -302,7 +302,7 @@ const styles = StyleSheet.create({
   actorChip: { alignItems: 'center', marginRight: 16, width: 90 },
   actorPhoto: { width: 82, height: 82, borderRadius: 41, marginBottom: 8 },
   actorPhotoPlaceholder: { width: 82, height: 82, borderRadius: 41, backgroundColor: '#2A2A2C', marginBottom: 8 },
-  actorName: { fontSize: 12, color: '#F5E6D0', textAlign: 'center', lineHeight: 16 },
+  actorName: { fontSize: 14, color: '#F5E6D0', textAlign: 'center', lineHeight: 18 },
   regionNote: { fontSize: 13, color: '#A08060', marginBottom: 14, fontStyle: 'italic' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 14 },
   card: { width: '47%', aspectRatio: 1, borderRadius: 24, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 10, elevation: 6 },

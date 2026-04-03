@@ -186,9 +186,9 @@ const styles = StyleSheet.create({
     marginTop: 6,
   },
   bio: {
-    fontSize: 14,
+    fontSize: 16,
     color: '#A08060',
-    lineHeight: 21,
+    lineHeight: 24,
     marginBottom: 6,
   },
   seeMoreBtn: {
