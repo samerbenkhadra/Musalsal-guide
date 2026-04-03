@@ -6,6 +6,7 @@ import RegionSelectionScreen from './screens/RegionSelectionScreen';
 import EraSelectionScreen from './screens/EraSelectionScreen';
 import RecommendationsScreen from './screens/RecommendationsScreen';
 import EpisodeDetailScreen from './screens/EpisodeDetailScreen';
+import ActorProfileScreen from './screens/ActorProfileScreen';
 import { LanguageProvider } from './context/LanguageContext';
 
 const Stack = createNativeStackNavigator();
@@ -19,6 +20,7 @@ export default function App() {
           <Stack.Screen name="EraSelection" component={EraSelectionScreen} />
           <Stack.Screen name="Recommendations" component={RecommendationsScreen} />
           <Stack.Screen name="EpisodeDetail" component={EpisodeDetailScreen} />
+          <Stack.Screen name="ActorProfile" component={ActorProfileScreen} />
         </Stack.Navigator>
       </NavigationContainer>
     </LanguageProvider>

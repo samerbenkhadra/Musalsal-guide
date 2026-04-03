@@ -27,6 +27,39 @@ const shuffleArray = (array) => {
   return shuffled;
 };
 
+export const searchPerson = async (query) => {
+  try {
+    const res = await fetch(`${BASE_URL}/search/person?api_key=${API_KEY}&query=${encodeURIComponent(query)}`);
+    const data = await res.json();
+    return data.results || [];
+  } catch {
+    return [];
+  }
+};
+
+export const fetchPersonDetails = async (personId) => {
+  try {
+    const res = await fetch(`${BASE_URL}/person/${personId}?api_key=${API_KEY}`);
+    return await res.json();
+  } catch {
+    return null;
+  }
+};
+
+export const fetchPersonTVCredits = async (personId) => {
+  try {
+    const res = await fetch(`${BASE_URL}/person/${personId}/tv_credits?api_key=${API_KEY}`);
+    const data = await res.json();
+    const credits = (data.cast || [])
+      .filter((s) => s.poster_path)
+      .sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0));
+    const unique = credits.filter((s, i, self) => self.findIndex(x => x.id === s.id) === i);
+    return unique;
+  } catch {
+    return [];
+  }
+};
+
 export const fetchWatchProviders = async (showId) => {
   try {
     const res = await fetch(`${BASE_URL}/tv/${showId}/watch/providers?api_key=${API_KEY}`);

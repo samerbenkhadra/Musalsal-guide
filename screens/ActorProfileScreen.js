@@ -1,0 +1,193 @@
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  StyleSheet,
+  SafeAreaView,
+  Image,
+  FlatList,
+  ActivityIndicator,
+} from 'react-native';
+import { fetchPersonDetails, fetchPersonTVCredits, IMAGE_BASE_URL } from '../services/tmdb';
+import { useLanguage } from '../context/LanguageContext';
+
+export default function ActorProfileScreen({ route, navigation }) {
+  const { personId, personName } = route.params;
+  const { language } = useLanguage();
+  const [person, setPerson] = useState(null);
+  const [shows, setShows] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      const [details, credits] = await Promise.all([
+        fetchPersonDetails(personId),
+        fetchPersonTVCredits(personId),
+      ]);
+      setPerson(details);
+      setShows(credits);
+      setLoading(false);
+    };
+    load();
+  }, [personId]);
+
+  return (
+    <SafeAreaView style={styles.safe}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Text style={styles.backText}>← {language === 'ar' ? 'رجوع' : 'Back'}</Text>
+        </TouchableOpacity>
+
+        {loading ? (
+          <ActivityIndicator size="large" color="#FFAB76" style={{ marginTop: 40 }} />
+        ) : (
+          <>
+            <View style={styles.profileHeader}>
+              {person?.profile_path ? (
+                <Image
+                  source={{ uri: `${IMAGE_BASE_URL}${person.profile_path}` }}
+                  style={styles.profilePhoto}
+                />
+              ) : (
+                <View style={styles.profilePhotoPlaceholder} />
+              )}
+              <View style={styles.profileInfo}>
+                <Text style={styles.profileName}>{person?.name || personName}</Text>
+                {person?.birthday ? (
+                  <Text style={styles.profileMeta}>{person.birthday.split('-')[0]}</Text>
+                ) : null}
+                {person?.place_of_birth ? (
+                  <Text style={styles.profileMeta}>{person.place_of_birth}</Text>
+                ) : null}
+                <Text style={styles.profileCredits}>{shows.length} {language === 'ar' ? 'مسلسل' : 'shows'}</Text>
+              </View>
+            </View>
+
+            {person?.biography ? (
+              <Text style={styles.bio} numberOfLines={4}>{person.biography}</Text>
+            ) : null}
+
+            <Text style={styles.sectionTitle}>
+              {language === 'ar' ? 'المسلسلات' : 'Shows'}
+            </Text>
+
+            <View style={styles.showsGrid}>
+              {shows.map((show) => (
+                <TouchableOpacity
+                  key={show.id}
+                  style={styles.showCard}
+                  activeOpacity={0.85}
+                  onPress={() => navigation.navigate('EpisodeDetail', { show, accent: '#FFAB76' })}
+                >
+                  <Image
+                    source={{ uri: `${IMAGE_BASE_URL}${show.poster_path}` }}
+                    style={styles.showPoster}
+                  />
+                  <Text style={styles.showName} numberOfLines={2}>{show.name}</Text>
+                  {show.first_air_date ? (
+                    <Text style={styles.showYear}>{show.first_air_date.split('-')[0]}</Text>
+                  ) : null}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </>
+        )}
+      </ScrollView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: {
+    flex: 1,
+    backgroundColor: '#1C1C1E',
+  },
+  scroll: {
+    padding: 24,
+    paddingBottom: 48,
+  },
+  backBtn: {
+    marginBottom: 20,
+  },
+  backText: {
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#FFAB76',
+  },
+  profileHeader: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 16,
+  },
+  profilePhoto: {
+    width: 100,
+    height: 140,
+    borderRadius: 12,
+  },
+  profilePhotoPlaceholder: {
+    width: 100,
+    height: 140,
+    borderRadius: 12,
+    backgroundColor: '#2A2A2C',
+  },
+  profileInfo: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: 4,
+  },
+  profileName: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#F5E6D0',
+    marginBottom: 4,
+  },
+  profileMeta: {
+    fontSize: 13,
+    color: '#A08060',
+  },
+  profileCredits: {
+    fontSize: 13,
+    color: '#FFAB76',
+    fontWeight: '600',
+    marginTop: 6,
+  },
+  bio: {
+    fontSize: 14,
+    color: '#A08060',
+    lineHeight: 21,
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#F5E6D0',
+    marginBottom: 16,
+  },
+  showsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 12,
+  },
+  showCard: {
+    width: '30%',
+  },
+  showPoster: {
+    width: '100%',
+    aspectRatio: 2 / 3,
+    borderRadius: 10,
+    marginBottom: 6,
+  },
+  showName: {
+    fontSize: 12,
+    color: '#F5E6D0',
+    fontWeight: '600',
+    lineHeight: 16,
+  },
+  showYear: {
+    fontSize: 11,
+    color: '#6B6B70',
+    marginTop: 2,
+  },
+});
