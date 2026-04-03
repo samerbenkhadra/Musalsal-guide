@@ -101,7 +101,7 @@ export default function RecommendationsScreen({ route, navigation }) {
           <Text style={styles.discoveryHint}>{language === 'ar' ? 'اختيارات جديدة في كل زيارة' : 'A fresh set of picks every time you visit'}</Text>
         )}
         {mode === 'all' && (
-          <Text style={styles.discoveryHint}>{language === 'ar' ? 'الأحدث أولاً' : 'Latest first'}</Text>
+          <Text style={styles.discoveryHint}>{language === 'ar' ? 'الأحدث أولاً' : 'Most recent shows shown first'}</Text>
         )}
 
         <View style={styles.filterRow}>
