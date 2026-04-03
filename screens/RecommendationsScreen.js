@@ -9,6 +9,7 @@ import {
   Image,
   Modal,
   ScrollView,
+  TextInput,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { fetchShows, fetchNewReleases, fetchLatestEpisode, IMAGE_BASE_URL } from '../services/tmdb';
@@ -31,6 +32,7 @@ export default function RecommendationsScreen({ route, navigation }) {
   const [activeFilter, setActiveFilter] = useState(null);
   const [scoringDone, setScoringDone] = useState(false);
   const [watchedIds, setWatchedIds] = useState(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
 
   useFocusEffect(useCallback(() => {
     getWatchedShows().then(setWatchedIds);
@@ -72,6 +74,7 @@ export default function RecommendationsScreen({ route, navigation }) {
   const handleModeSwitch = (selectedMode) => {
     if (selectedMode === mode) return;
     setMode(selectedMode);
+    setSearchQuery('');
     loadShows(selectedMode);
   };
 
@@ -101,7 +104,16 @@ export default function RecommendationsScreen({ route, navigation }) {
           <Text style={styles.discoveryHint}>{language === 'ar' ? 'اختيارات جديدة في كل زيارة' : 'A fresh set of picks every time you visit'}</Text>
         )}
         {mode === 'all' && (
-          <Text style={styles.discoveryHint}>{language === 'ar' ? 'الأحدث أولاً' : 'Most recent shows shown first'}</Text>
+          <>
+            <Text style={styles.discoveryHint}>{language === 'ar' ? 'الأحدث أولاً' : 'Most recent shows shown first'}</Text>
+            <TextInput
+              style={styles.searchBar}
+              placeholder={language === 'ar' ? 'ابحث عن مسلسل...' : 'Search shows...'}
+              placeholderTextColor="#6B6B70"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </>
         )}
 
         <View style={styles.filterRow}>
@@ -144,9 +156,11 @@ export default function RecommendationsScreen({ route, navigation }) {
         </View>
       ) : (
         <FlatList
-          data={activeFilter
-            ? shows.filter((s) => (showScores[s.id]?.[activeFilter] || 0) >= 60)
-            : shows}
+          data={(() => {
+            let list = activeFilter ? shows.filter((s) => (showScores[s.id]?.[activeFilter] || 0) >= 60) : shows;
+            if (mode === 'all' && searchQuery.trim()) list = list.filter((s) => s.name?.toLowerCase().includes(searchQuery.toLowerCase()));
+            return list;
+          })()}
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.list}
           ListHeaderComponent={
@@ -244,6 +258,15 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#A08060',
+  },
+  searchBar: {
+    backgroundColor: '#2A2A2C',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    color: '#F5E6D0',
+    fontSize: 14,
+    marginTop: 8,
   },
   discoveryHint: {
     fontSize: 12,
