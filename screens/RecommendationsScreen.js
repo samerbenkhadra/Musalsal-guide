@@ -163,17 +163,9 @@ export default function RecommendationsScreen({ route, navigation }) {
               onPress={() => navigation.navigate('EpisodeDetail', { show: item, accent })}
             >
               <View style={[styles.accentBar, { backgroundColor: accent }]} />
-              <View style={styles.posterWrapper}>
-                {item.poster_path ? (
-                  <Image source={{ uri: `${IMAGE_BASE_URL}${item.poster_path}` }} style={styles.poster} />
-                ) : null}
-                <TouchableOpacity
-                  style={[styles.watchedBtn, watchedIds.has(item.id) && styles.watchedBtnActive]}
-                  onPress={async () => setWatchedIds(await toggleWatched(item.id))}
-                >
-                  <Text style={styles.watchedBtnText}>✓</Text>
-                </TouchableOpacity>
-              </View>
+              {item.poster_path ? (
+                <Image source={{ uri: `${IMAGE_BASE_URL}${item.poster_path}` }} style={styles.poster} />
+              ) : null}
               <View style={styles.cardContent}>
                 <Text style={styles.showName} numberOfLines={1}>{item.name}</Text>
                 <Text style={[styles.meta, { color: accent }]}>
@@ -190,6 +182,14 @@ export default function RecommendationsScreen({ route, navigation }) {
                   </View>
                 ) : null}
                 <Text style={[styles.readMore, { color: accent }]}>Read more →</Text>
+                <TouchableOpacity
+                  onPress={async (e) => { e.stopPropagation?.(); setWatchedIds(await toggleWatched(item.id)); }}
+                  style={styles.watchedTextBtn}
+                >
+                  <Text style={[styles.watchedTextBtnText, watchedIds.has(item.id) && styles.watchedTextBtnActive]}>
+                    {watchedIds.has(item.id) ? '✓ Watched' : '+ Mark as watched'}
+                  </Text>
+                </TouchableOpacity>
               </View>
             </TouchableOpacity>
           )}
@@ -319,36 +319,20 @@ const styles = StyleSheet.create({
   accentBar: {
     width: 4,
   },
-  posterWrapper: {
-    position: 'relative',
-    width: 70,
-    height: 105,
-  },
   poster: {
     width: 70,
     height: 105,
   },
-  watchedBtn: {
-    position: 'absolute',
-    bottom: 4,
-    right: 4,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: '#6B6B70',
+  watchedTextBtn: {
+    marginTop: 6,
   },
-  watchedBtnActive: {
-    backgroundColor: '#4CAF50',
-    borderColor: '#4CAF50',
+  watchedTextBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#6B6B70',
   },
-  watchedBtnText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#fff',
+  watchedTextBtnActive: {
+    color: '#4CAF50',
   },
   cardContent: {
     flex: 1,

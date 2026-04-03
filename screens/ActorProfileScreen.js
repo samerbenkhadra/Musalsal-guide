@@ -105,11 +105,12 @@ export default function ActorProfileScreen({ route, navigation }) {
                 >
                   <View style={styles.showPosterWrapper}>
                     <Image source={{ uri: `${IMAGE_BASE_URL}${show.poster_path}` }} style={styles.showPoster} />
-                    {watchedIds.has(show.id) && (
-                      <View style={styles.watchedOverlay}>
-                        <Text style={styles.watchedOverlayText}>✓</Text>
-                      </View>
-                    )}
+                    <TouchableOpacity
+                      style={[styles.watchedOverlay, watchedIds.has(show.id) && styles.watchedOverlayActive]}
+                      onPress={async () => setWatchedIds(await toggleWatched(show.id))}
+                    >
+                      <Text style={styles.watchedOverlayText}>✓</Text>
+                    </TouchableOpacity>
                   </View>
                   <Text style={styles.showName} numberOfLines={2}>{show.name}</Text>
                   {show.first_air_date ? (
@@ -231,9 +232,15 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: '#4CAF50',
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    borderWidth: 1,
+    borderColor: '#6B6B70',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  watchedOverlayActive: {
+    backgroundColor: '#4CAF50',
+    borderColor: '#4CAF50',
   },
   watchedOverlayText: {
     fontSize: 11,
