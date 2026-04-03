@@ -120,7 +120,10 @@ export default function RecommendationsScreen({ route, navigation }) {
               </Text>
             </TouchableOpacity>
           ))}
-          {!scoringDone && <Text style={styles.scoringHint}>{language === 'ar' ? 'جارٍ التحليل...' : 'Scoring...'}</Text>}
+          {!scoringDone
+            ? <Text style={styles.scoringHint}>{language === 'ar' ? 'جارٍ التحليل...' : 'Scoring...'}</Text>
+            : !activeFilter && <Text style={styles.scoringHint}>{language === 'ar' ? 'اضغط للتصفية ↑' : 'tap to filter ↑'}</Text>
+          }
         </View>
         {activeFilter && scoringDone && (
           <View style={[styles.activeFilterBadge, { backgroundColor: TRAITS.find(t => t.key === activeFilter)?.color }]}>
