@@ -19,6 +19,7 @@ export default function ActorProfileScreen({ route, navigation }) {
   const [person, setPerson] = useState(null);
   const [shows, setShows] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [bioExpanded, setBioExpanded] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -67,8 +68,15 @@ export default function ActorProfileScreen({ route, navigation }) {
             </View>
 
             {person?.biography ? (
-              <Text style={styles.bio} numberOfLines={4}>{person.biography}</Text>
-            ) : null}
+              <>
+                <Text style={styles.bio} numberOfLines={bioExpanded ? undefined : 4}>{person.biography}</Text>
+                <TouchableOpacity onPress={() => setBioExpanded(!bioExpanded)} style={styles.seeMoreBtn}>
+                  <Text style={styles.seeMoreText}>{bioExpanded ? (language === 'ar' ? 'عرض أقل ↑' : 'See less ↑') : (language === 'ar' ? 'عرض المزيد ↓' : 'See more ↓')}</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <Text style={styles.noBio}>{language === 'ar' ? 'لا توجد سيرة ذاتية متاحة' : 'No biography available.'}</Text>
+            )}
 
             <Text style={styles.sectionTitle}>
               {language === 'ar' ? 'المسلسلات' : 'Shows'}
@@ -158,6 +166,20 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#A08060',
     lineHeight: 21,
+    marginBottom: 6,
+  },
+  seeMoreBtn: {
+    marginBottom: 24,
+  },
+  seeMoreText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#FFAB76',
+  },
+  noBio: {
+    fontSize: 14,
+    color: '#6B6B70',
+    fontStyle: 'italic',
     marginBottom: 24,
   },
   sectionTitle: {
