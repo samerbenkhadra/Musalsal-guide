@@ -95,7 +95,7 @@ export default function RegionSelectionScreen({ navigation }) {
     setSearchQuery(text);
     if (text.length < 2) { setSearchResults([]); return; }
     setSearching(true);
-    const results = await searchPerson(text);
+    const results = await searchPerson(text, language);
     setSearchResults(results.slice(0, 6));
     setSearching(false);
   };
@@ -197,7 +197,7 @@ export default function RegionSelectionScreen({ navigation }) {
                     onPress={() => {
                       setSearchQuery('');
                       setSearchResults([]);
-                      navigation.navigate('ActorProfile', { personId: person.id, personName: person.name });
+                      navigation.navigate('ActorProfile', { personId: person.id, personName: person.name, nameAr: language === 'ar' ? person.name : undefined });
                     }}
                   >
                     {person.profile_path ? (

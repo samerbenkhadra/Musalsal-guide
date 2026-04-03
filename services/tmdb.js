@@ -27,9 +27,9 @@ const shuffleArray = (array) => {
   return shuffled;
 };
 
-export const searchPerson = async (query) => {
+export const searchPerson = async (query, language = 'en') => {
   try {
-    const res = await fetch(`${BASE_URL}/search/person?api_key=${API_KEY}&query=${encodeURIComponent(query)}`);
+    const res = await fetch(`${BASE_URL}/search/person?api_key=${API_KEY}&query=${encodeURIComponent(query)}&language=${language}`);
     const data = await res.json();
     return data.results || [];
   } catch {
