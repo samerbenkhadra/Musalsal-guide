@@ -70,13 +70,18 @@ export default function ActorProfileScreen({ route, navigation }) {
                   <Text style={styles.profileMeta}>{person.place_of_birth}</Text>
                 ) : null}
                 <Text style={styles.profileCredits}>{shows.length} {language === 'ar' ? 'مسلسل' : 'shows'}</Text>
-                {shows.filter(s => watchedIds.has(s.id)).length > 0 && (
-                  <Text style={styles.watchedCount}>
-                    {language === 'ar'
-                      ? `شاهدت ${shows.filter(s => watchedIds.has(s.id)).length} من ${shows.length}`
-                      : `You've watched ${shows.filter(s => watchedIds.has(s.id)).length}/${shows.length}`}
-                  </Text>
-                )}
+                {(() => {
+                  const watchedCount = shows.filter(s => watchedIds.has(s.id)).length;
+                  return watchedCount > 0 ? (
+                    <Text style={[styles.watchedCount, { color: '#4CAF50', fontStyle: 'normal', fontWeight: '600' }]}>
+                      {language === 'ar' ? `شاهدت ${watchedCount} من ${shows.length}` : `You've watched ${watchedCount}/${shows.length}`}
+                    </Text>
+                  ) : (
+                    <Text style={styles.watchedCount}>
+                      {language === 'ar' ? 'اضغط ✓ على المسلسلات التي شاهدتها' : "Tap ✓ on shows you've watched"}
+                    </Text>
+                  );
+                })()}
               </View>
             </View>
 
@@ -248,9 +253,9 @@ const styles = StyleSheet.create({
     color: '#fff',
   },
   watchedCount: {
-    fontSize: 13,
-    color: '#4CAF50',
-    fontWeight: '600',
+    fontSize: 12,
+    color: '#6B6B70',
+    fontStyle: 'italic',
     marginTop: 2,
   },
   showName: {
