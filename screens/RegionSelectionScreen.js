@@ -156,7 +156,7 @@ export default function RegionSelectionScreen({ navigation }) {
             onPress={() => setBrowseMode('actor')}
           >
             <Text style={[styles.browseBtnText, browseMode === 'actor' && styles.browseBtnTextActive]}>
-              {language === 'ar' ? 'بالممثل' : 'By Actor'}
+              {language === 'ar' ? 'تصفح بالممثل' : 'Browse by Actor'}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -164,7 +164,7 @@ export default function RegionSelectionScreen({ navigation }) {
             onPress={() => setBrowseMode('region')}
           >
             <Text style={[styles.browseBtnText, browseMode === 'region' && styles.browseBtnTextActive]}>
-              {language === 'ar' ? 'بالمنطقة' : 'By Region'}
+              {language === 'ar' ? 'تصفح بالمنطقة' : 'Browse by Region'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -209,6 +209,8 @@ export default function RegionSelectionScreen({ navigation }) {
             ) : null}
 
             {searchResults.length === 0 && !searching && (
+              <>
+              <Text style={styles.swipeHint}>{language === 'ar' ? 'اسحب لرؤية المزيد ←' : 'swipe to see more →'}</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.popularActors}>
                 {popularActors.map((actor) => (
                   <TouchableOpacity
@@ -225,6 +227,7 @@ export default function RegionSelectionScreen({ navigation }) {
                   </TouchableOpacity>
                 ))}
               </ScrollView>
+              </>
             )}
           </>
         )}
@@ -286,6 +289,7 @@ const styles = StyleSheet.create({
   searchResultPhotoPlaceholder: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#3A3A3C' },
   searchResultName: { fontSize: 14, fontWeight: '600', color: '#F5E6D0' },
   searchResultKnown: { fontSize: 12, color: '#6B6B70' },
+  swipeHint: { fontSize: 11, color: '#6B6B70', fontStyle: 'italic', marginBottom: 8, textAlign: 'right' },
   popularActors: { marginBottom: 8 },
   actorChip: { alignItems: 'center', marginRight: 16, width: 72 },
   actorPhoto: { width: 64, height: 64, borderRadius: 32, marginBottom: 6 },
