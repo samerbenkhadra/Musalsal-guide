@@ -294,7 +294,7 @@ const styles = StyleSheet.create({
     color: '#A08060',
   },
   scoringHint: {
-    fontSize: 11,
+    fontSize: 13,
     color: '#6B6B70',
     alignSelf: 'center',
     fontStyle: 'italic',
