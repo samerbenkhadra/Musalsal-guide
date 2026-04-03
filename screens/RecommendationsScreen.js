@@ -122,7 +122,7 @@ export default function RecommendationsScreen({ route, navigation }) {
           ))}
           {!scoringDone
             ? <Text style={styles.scoringHint}>{language === 'ar' ? 'جارٍ التحليل...' : 'Scoring...'}</Text>
-            : !activeFilter && <Text style={styles.scoringHint}>{language === 'ar' ? 'اضغط للتصفية ↑' : 'tap to filter ↑'}</Text>
+            : !activeFilter && <Text style={styles.scoringHint}>{language === 'ar' ? 'اضغط للتصفية حسب الموضوع' : 'tap to filter by theme'}</Text>
           }
         </View>
         {activeFilter && scoringDone && (
