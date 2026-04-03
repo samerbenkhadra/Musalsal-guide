@@ -133,11 +133,11 @@ export const fetchShows = async (region, era, language = 'en') => {
   }
 };
 
-export const fetchAllShows = async (region, era, language = 'en') => {
+export const fetchAllShows = async (region, era = null, language = 'en', sortBy = 'popularity.desc') => {
   try {
     const pages = await Promise.all(
       [1, 2, 3, 4, 5].map((page) =>
-        fetch(`${BASE_URL}/discover/tv?${buildParams(region, era, page)}&language=${language}`).then((r) => r.json())
+        fetch(`${BASE_URL}/discover/tv?${buildParams(region, era, page, sortBy)}&language=${language}`).then((r) => r.json())
       )
     );
     const allResults = pages.flatMap((data) => filterResults(data.results || [], era));

@@ -12,7 +12,7 @@ import {
   TextInput,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { fetchShows, fetchNewReleases, fetchLatestEpisode, IMAGE_BASE_URL } from '../services/tmdb';
+import { fetchShows, fetchAllShows, fetchLatestEpisode, IMAGE_BASE_URL } from '../services/tmdb';
 import { getWatchedShows, toggleWatched } from '../services/watchlist';
 import { getShowScores, TRAITS } from '../services/scoring';
 import { useLanguage } from '../context/LanguageContext';
@@ -41,7 +41,7 @@ export default function RecommendationsScreen({ route, navigation }) {
   const loadShows = async (selectedMode) => {
     setLoading(true);
     let data;
-    if (selectedMode === 'all') data = await fetchNewReleases(region, language);
+    if (selectedMode === 'all') data = await fetchAllShows(region, null, language, 'first_air_date.desc');
     else data = await fetchShows(region, null, language);
     const withEpisodes = await Promise.all(
       data.map(async (show) => {
