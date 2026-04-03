@@ -24,7 +24,7 @@ export default function ActorProfileScreen({ route, navigation }) {
     const load = async () => {
       setLoading(true);
       const [details, credits] = await Promise.all([
-        fetchPersonDetails(personId, language),
+        fetchPersonDetails(personId),
         fetchPersonTVCredits(personId, language),
       ]);
       setPerson(details);
