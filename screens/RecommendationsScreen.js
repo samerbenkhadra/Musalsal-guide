@@ -12,7 +12,7 @@ import {
   TextInput,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { fetchShows, fetchAllShows, fetchLatestEpisode, IMAGE_BASE_URL } from '../services/tmdb';
+import { fetchShows, fetchAllShows, IMAGE_BASE_URL } from '../services/tmdb';
 import { getWatchedShows, toggleWatched } from '../services/watchlist';
 import { getShowScores, TRAITS } from '../services/scoring';
 import { useLanguage } from '../context/LanguageContext';
@@ -43,13 +43,7 @@ export default function RecommendationsScreen({ route, navigation }) {
     let data;
     if (selectedMode === 'all') data = await fetchAllShows(region, null, language, 'first_air_date.desc');
     else data = await fetchShows(region, null, language);
-    const withEpisodes = await Promise.all(
-      data.map(async (show) => {
-        const latestEpisode = await fetchLatestEpisode(show.id);
-        return { ...show, latestEpisode };
-      })
-    );
-    setShows(withEpisodes);
+    setShows(data);
     setLoading(false);
     generateScoresInBackground(withEpisodes);
   };
@@ -198,16 +192,6 @@ export default function RecommendationsScreen({ route, navigation }) {
                 <Text style={[styles.meta, { color: accent }]}>
                   {item.first_air_date ? item.first_air_date.split('-')[0] : ''}
                 </Text>
-                {item.latestEpisode && !(item.latestEpisode.season_number === 1 && item.latestEpisode.episode_number === 1) ? (
-                  <View style={styles.episodeBadge}>
-                    <Text style={[styles.episodeBadgeText, { color: accent }]}>
-                      Latest: S{item.latestEpisode.season_number} E{item.latestEpisode.episode_number}
-                    </Text>
-                    <Text style={styles.episodeName} numberOfLines={1}>
-                      {item.latestEpisode.name}
-                    </Text>
-                  </View>
-                ) : null}
                 <Text style={[styles.readMore, { color: accent }]}>Read more →</Text>
               </View>
             </TouchableOpacity>
