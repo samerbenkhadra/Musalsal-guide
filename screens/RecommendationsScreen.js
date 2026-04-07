@@ -140,7 +140,7 @@ export default function RecommendationsScreen({ route, navigation }) {
         {activeFilter && scoringDone && (
           <View style={[styles.activeFilterBadge, { backgroundColor: TRAITS.find(t => t.key === activeFilter)?.color }]}>
             <Text style={styles.activeFilterBadgeText}>
-              {language === 'ar' ? `عرض مسلسلات ${TRAITS.find(t => t.key === activeFilter)?.label} عالية` : `Showing shows high in ${TRAITS.find(t => t.key === activeFilter)?.label}`}
+              {language === 'ar' ? `عالي في ${TRAITS.find(t => t.key === activeFilter)?.label}` : `High in ${TRAITS.find(t => t.key === activeFilter)?.label}`}
             </Text>
           </View>
         )}
