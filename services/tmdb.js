@@ -27,11 +27,16 @@ const shuffleArray = (array) => {
   return shuffled;
 };
 
-export const searchShows = async (query, language = 'en') => {
+export const searchShows = async (query, region, language = 'en') => {
   try {
+    const { country, language: origLang } = regionCountry[region] || {};
     const res = await fetch(`${BASE_URL}/search/tv?api_key=${API_KEY}&query=${encodeURIComponent(query)}&language=${language}`);
     const data = await res.json();
-    return (data.results || []).filter(s => s.poster_path);
+    return (data.results || []).filter(s =>
+      s.poster_path &&
+      (!origLang || s.original_language === origLang) &&
+      (!country || (s.origin_country || []).includes(country))
+    );
   } catch {
     return [];
   }

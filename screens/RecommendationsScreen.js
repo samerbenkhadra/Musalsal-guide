@@ -118,7 +118,7 @@ export default function RecommendationsScreen({ route, navigation }) {
                 setSearchQuery(text);
                 if (text.trim().length > 1) {
                   setSearching(true);
-                  const results = await searchShows(text, language);
+                  const results = await searchShows(text, region, language);
                   setSearchResults(results);
                   setSearching(false);
                 } else {
