@@ -56,14 +56,21 @@ export default function RecommendationsScreen({ route, navigation }) {
 
   const generateScoresInBackground = async (showList) => {
     setScoringDone(false);
-    await Promise.all(
-      showList.map(async (show) => {
-        const scores = await getShowScores(show);
-        if (scores) {
-          setShowScores((prev) => ({ ...prev, [show.id]: scores }));
-        }
-      })
-    );
+    const batchSize = 5;
+    for (let i = 0; i < showList.length; i += batchSize) {
+      const batch = showList.slice(i, i + batchSize);
+      await Promise.all(
+        batch.map(async (show) => {
+          const scores = await getShowScores(show);
+          if (scores) {
+            setShowScores((prev) => ({ ...prev, [show.id]: scores }));
+          }
+        })
+      );
+      if (i + batchSize < showList.length) {
+        await new Promise((resolve) => setTimeout(resolve, 300));
+      }
+    }
     setScoringDone(true);
   };
 
