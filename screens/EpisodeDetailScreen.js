@@ -22,7 +22,7 @@ export default function EpisodeDetailScreen({ route, navigation }) {
   const { show: initialShow, accent } = route.params;
   const { language } = useLanguage();
   const t = {
-    vibeCheck: language === 'ar' ? 'تحليل المسلسل' : 'Themes',
+    vibeCheck: language === 'ar' ? 'تحليل المسلسل' : 'Show Analysis',
     about: language === 'ar' ? 'عن هذا المسلسل' : 'About this show',
     ask: language === 'ar' ? 'اسأل عن هذا المسلسل' : 'Ask about this show',
     whereToWatch: language === 'ar' ? 'أين تشاهده' : 'Where to watch',
