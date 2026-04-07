@@ -1,7 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CLAUDE_API_KEY } from './config';
 
-const CACHE_PREFIX = 'show_scores_v2_';
+const CACHE_PREFIX = 'show_scores_v3_';
 
 export const TRAITS = [
   { key: 'romance', label: 'Romance', color: '#E8A0BF' },
@@ -29,7 +29,7 @@ export const getShowScores = async (show) => {
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 80,
-        system: 'You are a TV show analyst. Given a show name and description, return ONLY a valid JSON object with integer scores from 0 to 100 for these exact keys: romance, drama, suspense, betrayal. No explanation, no extra text, just the JSON.',
+        system: 'You are a TV show analyst specialising in Middle Eastern and Turkish TV. Use your own knowledge of the show first, and treat the description only as a supplement. Return ONLY a valid JSON object with integer scores from 0 to 100 for these exact keys: romance, drama, suspense, betrayal. No explanation, no extra text, just the JSON.',
         messages: [{
           role: 'user',
           content: `Show: ${show.name}\nDescription: ${show.overview || 'No description available.'}`,
