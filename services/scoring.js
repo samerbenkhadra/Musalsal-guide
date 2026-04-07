@@ -8,7 +8,6 @@ export const TRAITS = [
   { key: 'drama', label: 'Drama', color: '#FFAB76' },
   { key: 'suspense', label: 'Suspense', color: '#B39DDB' },
   { key: 'betrayal', label: 'Betrayal', color: '#FF6B6B' },
-  { key: 'comedy', label: 'Comedy', color: '#7AC9C9' },
 ];
 
 export const getShowScores = async (show) => {
@@ -30,7 +29,7 @@ export const getShowScores = async (show) => {
       body: JSON.stringify({
         model: 'claude-haiku-4-5-20251001',
         max_tokens: 80,
-        system: 'You are a TV show analyst. Given a show name and description, return ONLY a valid JSON object with integer scores from 0 to 100 for these exact keys: romance, drama, suspense, betrayal, comedy. No explanation, no extra text, just the JSON.',
+        system: 'You are a TV show analyst. Given a show name and description, return ONLY a valid JSON object with integer scores from 0 to 100 for these exact keys: romance, drama, suspense, betrayal. No explanation, no extra text, just the JSON.',
         messages: [{
           role: 'user',
           content: `Show: ${show.name}\nDescription: ${show.overview || 'No description available.'}`,
