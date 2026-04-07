@@ -1,6 +1,39 @@
 const SUPABASE_URL = 'https://nkhhtznlasaqpatyzecp.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5raGh0em5sYXNhcXBhdHl6ZWNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4NzMxNzEsImV4cCI6MjA5MDQ0OTE3MX0.C8DSixRp9eFVJq3U43f3VPg7RwraMDAFk4hLD20noKo';
 
+export const fetchShowScore = async (showId) => {
+  try {
+    const res = await fetch(
+      `${SUPABASE_URL}/rest/v1/show_scores?show_id=eq.${showId}&select=romance,drama,suspense,betrayal`,
+      {
+        headers: {
+          apikey: SUPABASE_ANON_KEY,
+          Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        },
+      }
+    );
+    const data = await res.json();
+    return data?.[0] || null;
+  } catch {
+    return null;
+  }
+};
+
+export const saveShowScore = async (showId, scores) => {
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/show_scores`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json',
+        Prefer: 'resolution=ignore-duplicates',
+      },
+      body: JSON.stringify({ show_id: showId, ...scores }),
+    });
+  } catch {}
+};
+
 export const fetchActorNameOverrides = async () => {
   try {
     const res = await fetch(

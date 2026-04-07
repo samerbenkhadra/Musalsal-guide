@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { CLAUDE_API_KEY } from './config';
+import { fetchShowScore, saveShowScore } from './supabase';
 
 const CACHE_PREFIX = 'show_scores_v3_';
 
@@ -13,11 +14,20 @@ export const TRAITS = [
 export const getShowScores = async (show) => {
   const cacheKey = `${CACHE_PREFIX}${show.id || show.name}`;
 
+  // 1. Check local cache first (instant)
   try {
     const cached = await AsyncStorage.getItem(cacheKey);
     if (cached) return JSON.parse(cached);
   } catch {}
 
+  // 2. Check Supabase (shared across all users)
+  const supabaseScore = await fetchShowScore(show.id);
+  if (supabaseScore) {
+    try { await AsyncStorage.setItem(cacheKey, JSON.stringify(supabaseScore)); } catch {}
+    return supabaseScore;
+  }
+
+  // 3. Call Claude as last resort, then save to both caches
   try {
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -41,8 +51,8 @@ export const getShowScores = async (show) => {
     const text = data.content?.[0]?.text || '{}';
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     const scores = JSON.parse(jsonMatch ? jsonMatch[0] : '{}');
-    console.log('Scores for', show.name, scores);
     await AsyncStorage.setItem(cacheKey, JSON.stringify(scores));
+    await saveShowScore(show.id, scores);
     return scores;
   } catch (e) {
     console.log('Scoring error for', show.name, e.message);
