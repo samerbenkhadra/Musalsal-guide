@@ -27,6 +27,16 @@ const shuffleArray = (array) => {
   return shuffled;
 };
 
+export const searchShows = async (query, language = 'en') => {
+  try {
+    const res = await fetch(`${BASE_URL}/search/tv?api_key=${API_KEY}&query=${encodeURIComponent(query)}&language=${language}`);
+    const data = await res.json();
+    return (data.results || []).filter(s => s.poster_path);
+  } catch {
+    return [];
+  }
+};
+
 export const searchPerson = async (query, language = 'en') => {
   try {
     const res = await fetch(`${BASE_URL}/search/person?api_key=${API_KEY}&query=${encodeURIComponent(query)}&language=${language}`);
@@ -135,7 +145,7 @@ export const fetchShows = async (region, era, language = 'en') => {
 
 export const fetchAllShows = async (region, era = null, language = 'en', sortBy = 'popularity.desc') => {
   try {
-    const lowVoteRegions = ['Syrian', 'Lebanese', 'Gulf'];
+    const lowVoteRegions = ['Syrian', 'Lebanese', 'Gulf', 'Egyptian'];
     const voteFilter = sortBy === 'first_air_date.desc' && !lowVoteRegions.includes(region) ? '&vote_count.gte=10' : '';
     const pages = await Promise.all(
       [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((page) =>

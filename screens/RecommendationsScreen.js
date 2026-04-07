@@ -12,7 +12,7 @@ import {
   TextInput,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
-import { fetchShows, fetchAllShows, IMAGE_BASE_URL } from '../services/tmdb';
+import { fetchShows, fetchAllShows, searchShows, IMAGE_BASE_URL } from '../services/tmdb';
 import { getWatchedShows, toggleWatched } from '../services/watchlist';
 import { getShowScores, TRAITS } from '../services/scoring';
 import { useLanguage } from '../context/LanguageContext';
@@ -33,6 +33,8 @@ export default function RecommendationsScreen({ route, navigation }) {
   const [scoringDone, setScoringDone] = useState(false);
   const [watchedIds, setWatchedIds] = useState(new Set());
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searching, setSearching] = useState(false);
 
   useFocusEffect(useCallback(() => {
     getWatchedShows().then(setWatchedIds);
@@ -112,7 +114,17 @@ export default function RecommendationsScreen({ route, navigation }) {
               placeholder={language === 'ar' ? 'ابحث عن مسلسل...' : 'Search shows...'}
               placeholderTextColor="#6B6B70"
               value={searchQuery}
-              onChangeText={setSearchQuery}
+              onChangeText={async (text) => {
+                setSearchQuery(text);
+                if (text.trim().length > 1) {
+                  setSearching(true);
+                  const results = await searchShows(text, language);
+                  setSearchResults(results);
+                  setSearching(false);
+                } else {
+                  setSearchResults([]);
+                }
+              }}
             />
           </>
         )}
@@ -158,9 +170,8 @@ export default function RecommendationsScreen({ route, navigation }) {
       ) : (
         <FlatList
           data={(() => {
-            let list = activeFilter ? shows.filter((s) => (showScores[s.id]?.[activeFilter] || 0) >= 60) : shows;
-            if (mode === 'all' && searchQuery.trim()) list = list.filter((s) => s.name?.toLowerCase().includes(searchQuery.toLowerCase()));
-            return list;
+            if (mode === 'all' && searchQuery.trim().length > 1) return searchResults;
+            return activeFilter ? shows.filter((s) => (showScores[s.id]?.[activeFilter] || 0) >= 60) : shows;
           })()}
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.list}
