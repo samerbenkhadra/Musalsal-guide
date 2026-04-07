@@ -32,7 +32,7 @@ export const getShowScores = async (show) => {
         system: 'You are a TV show analyst specialising in Middle Eastern and Turkish TV. Use your own knowledge of the show first, and treat the description only as a supplement. Return ONLY a valid JSON object with integer scores from 0 to 100 for these exact keys: romance, drama, suspense, betrayal. No explanation, no extra text, just the JSON.',
         messages: [{
           role: 'user',
-          content: `Show: ${show.name}\nDescription: ${show.overview || 'No description available.'}`,
+          content: `Show: ${show.name}\nCountry of origin: ${show.origin_country?.[0] || 'Unknown'}\nFirst aired: ${show.first_air_date || 'Unknown'}\nDescription: ${show.overview || 'No description available.'}`,
         }],
       }),
     });
