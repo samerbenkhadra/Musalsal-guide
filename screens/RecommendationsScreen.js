@@ -45,7 +45,7 @@ export default function RecommendationsScreen({ route, navigation }) {
     else data = await fetchShows(region, null, language);
     setShows(data);
     setLoading(false);
-    generateScoresInBackground(withEpisodes);
+    generateScoresInBackground(data);
   };
 
   const generateScoresInBackground = async (showList) => {
