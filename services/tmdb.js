@@ -135,7 +135,8 @@ export const fetchShows = async (region, era, language = 'en') => {
 
 export const fetchAllShows = async (region, era = null, language = 'en', sortBy = 'popularity.desc') => {
   try {
-    const voteFilter = sortBy === 'first_air_date.desc' ? '&vote_count.gte=10' : '';
+    const lowVoteRegions = ['Syrian', 'Lebanese', 'Gulf'];
+    const voteFilter = sortBy === 'first_air_date.desc' && !lowVoteRegions.includes(region) ? '&vote_count.gte=10' : '';
     const pages = await Promise.all(
       [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((page) =>
         fetch(`${BASE_URL}/discover/tv?${buildParams(region, era, page, sortBy)}&language=${language}${voteFilter}`).then((r) => r.json())
