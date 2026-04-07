@@ -129,15 +129,21 @@ export default function EpisodeDetailScreen({ route, navigation }) {
 
           {scores ? (
             <Section title={t.vibeCheck} accent={accent}>
-              {TRAITS.map((trait) => (
-                <View key={trait.key} style={styles.traitRow}>
-                  <Text style={styles.traitLabel}>{trait.label}</Text>
-                  <View style={styles.traitBarBg}>
-                    <View style={[styles.traitBarFill, { width: `${scores[trait.key] || 0}%`, backgroundColor: trait.color }]} />
-                  </View>
-                  <Text style={[styles.traitScore, { color: trait.color }]}>{scores[trait.key] || 0}</Text>
-                </View>
-              ))}
+              <View style={styles.signalGrid}>
+                {TRAITS.map((trait) => {
+                  const score = scores[trait.key] || 0;
+                  const level = score >= 65 ? (language === 'ar' ? 'مرتفع' : 'High') : score >= 35 ? (language === 'ar' ? 'متوسط' : 'Medium') : (language === 'ar' ? 'منخفض' : 'Low');
+                  const opacity = score >= 65 ? 1 : score >= 35 ? 0.6 : 0.3;
+                  return (
+                    <View key={trait.key} style={styles.signalItem}>
+                      <Text style={styles.signalTraitLabel}>{trait.label}</Text>
+                      <View style={[styles.signalBadge, { backgroundColor: trait.color, opacity }]}>
+                        <Text style={styles.signalBadgeText}>{level}</Text>
+                      </View>
+                    </View>
+                  );
+                })}
+              </View>
             </Section>
           ) : (
             <Section title={t.vibeCheck} accent={accent}>
@@ -341,23 +347,29 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 10,
   },
-  traitLabel: {
-    width: 72,
-    fontSize: 13,
-    color: '#F5E6D0',
+  signalGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  signalItem: {
+    alignItems: 'center',
+    gap: 5,
+  },
+  signalTraitLabel: {
+    fontSize: 12,
+    color: '#A08060',
     fontWeight: '600',
   },
-  traitBarBg: {
-    flex: 1,
-    height: 8,
-    backgroundColor: '#1C1C1E',
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginHorizontal: 10,
+  signalBadge: {
+    paddingHorizontal: 12,
+    paddingVertical: 5,
+    borderRadius: 20,
   },
-  traitBarFill: {
-    height: '100%',
-    borderRadius: 4,
+  signalBadgeText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1C1C1E',
   },
   traitScore: {
     width: 28,
