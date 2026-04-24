@@ -12,14 +12,17 @@ import {
   KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 import { IMAGE_BASE_URL, fetchWatchProviders, fetchShowById } from '../services/tmdb';
 import { CLAUDE_API_KEY } from '../services/config';
 import { getShowScores, TRAITS } from '../services/scoring';
+import { fetchWhereToWatch, fetchTitleOverride } from '../services/supabase';
+import { getWatchedShows, markWatched, toggleWatched, getRating, saveRating, removeRating, getSavedShows, toggleSaved } from '../services/watchlist';
 import { useLanguage } from '../context/LanguageContext';
 
 export default function EpisodeDetailScreen({ route, navigation }) {
-  const { show: initialShow, accent } = route.params;
+  const { show: initialShow, accent, isDubbed = false } = route.params;
   const { language } = useLanguage();
   const t = {
     vibeCheck: language === 'ar' ? 'تحليل المسلسل' : 'Show Analysis',
@@ -37,11 +40,23 @@ export default function EpisodeDetailScreen({ route, navigation }) {
   const [loading, setLoading] = useState(false);
   const [scores, setScores] = useState(null);
   const [providers, setProviders] = useState([]);
+  const [manualWatchLink, setManualWatchLink] = useState(null);
+  const [isWatched, setIsWatched] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
+  const [userRating, setUserRating] = useState(null);
+  const [showRatingModal, setShowRatingModal] = useState(false);
   const scrollRef = useRef(null);
 
   useEffect(() => {
     getShowScores(initialShow).then(setScores);
-    if (initialShow.id) fetchWatchProviders(initialShow.id).then(setProviders);
+    if (initialShow.id) {
+      fetchWatchProviders(initialShow.id).then(setProviders);
+      fetchWhereToWatch(initialShow.id).then(setManualWatchLink);
+      getWatchedShows().then(watched => setIsWatched(watched.has(Number(initialShow.id))));
+      getSavedShows().then(saved => setIsSaved(saved.has(Number(initialShow.id))));
+      getRating(initialShow.id).then(setUserRating);
+      fetchTitleOverride(initialShow.id).then(title => { if (title) setShow(prev => ({ ...prev, name: title })); });
+    }
   }, []);
 
   useEffect(() => {
@@ -121,9 +136,109 @@ export default function EpisodeDetailScreen({ route, navigation }) {
                 <Text style={[styles.badgeText, { color: accent }]}>{year}</Text>
               </View>
             ) : null}
+            {isDubbed ? (
+              <View style={styles.dubbedBadge}>
+                <Text style={styles.dubbedBadgeText}>🎙 {language === 'ar' ? 'مدبلج بالعربية' : 'Dubbed in Arabic'}</Text>
+              </View>
+            ) : null}
           </View>
 
           <Text style={styles.showName}>{show.name}</Text>
+
+          <View style={styles.actionRow}>
+            <TouchableOpacity
+              style={styles.whatsappBtn}
+              onPress={() => {
+                const msg = language === 'ar'
+                  ? `شاهد ${show.name} على تطبيق MusalsalGo!`
+                  : `Check out ${show.name} on MusalsalGo!`;
+                Linking.openURL(`https://wa.me/?text=${encodeURIComponent(msg)}`);
+              }}
+            >
+              <Text style={styles.whatsappBtnText}>📲 {language === 'ar' ? 'شارك' : 'Share'}</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.watchedBtn, isWatched && styles.watchedBtnActive]}
+              onPress={async () => {
+                if (isWatched) {
+                  setShowRatingModal(true);
+                } else {
+                  await markWatched(initialShow.id, initialShow);
+                  setIsWatched(true);
+                  setShowRatingModal(true);
+                }
+              }}
+            >
+              <Text style={styles.watchedBtnText}>
+                {isWatched
+                  ? (userRating ? `✓ ${'★'.repeat(userRating)}` : `✓ ${language === 'ar' ? 'شاهدته' : 'Watched'}`)
+                  : (language === 'ar' ? '+ شاهدته' : '+ Mark Watched')}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.savedBtn, isSaved && styles.savedBtnActive]}
+              onPress={async () => {
+                const updated = await toggleSaved(initialShow.id, initialShow);
+                setIsSaved(updated.has(Number(initialShow.id)));
+              }}
+            >
+              <Text style={styles.savedBtnText}>{isSaved ? '🔖 Saved' : '🔖 Save'}</Text>
+            </TouchableOpacity>
+          </View>
+
+          <Modal visible={showRatingModal} transparent animationType="fade">
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalBox}>
+                <Text style={styles.modalTitle}>{language === 'ar' ? 'كيف كان المسلسل؟' : 'How was it?'}</Text>
+                <Text style={styles.modalSubtitle}>{show.name}</Text>
+                <View style={styles.starsRow}>
+                  {[1, 2, 3, 4, 5].map(star => (
+                    <TouchableOpacity
+                      key={star}
+                      onPress={async () => {
+                        await saveRating(initialShow.id, star);
+                        setUserRating(star);
+                        setShowRatingModal(false);
+                      }}
+                    >
+                      <Text style={[styles.star, userRating >= star && styles.starFilled]}>★</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                <TouchableOpacity onPress={() => setShowRatingModal(false)}>
+                  <Text style={styles.skipText}>{language === 'ar' ? 'تخطى' : 'Skip'}</Text>
+                </TouchableOpacity>
+                {userRating && (
+                  <TouchableOpacity
+                    onPress={async () => {
+                      await removeRating(initialShow.id);
+                      setUserRating(null);
+                      setShowRatingModal(false);
+                    }}
+                    style={{ marginTop: 10 }}
+                  >
+                    <Text style={styles.removeRatingText}>{language === 'ar' ? 'إزالة التقييم' : 'Remove rating'}</Text>
+                  </TouchableOpacity>
+                )}
+                {isWatched && (
+                  <TouchableOpacity
+                    onPress={async () => {
+                      const updated = await toggleWatched(initialShow.id);
+                      setIsWatched(updated.has(Number(initialShow.id)));
+                      await removeRating(initialShow.id);
+                      setUserRating(null);
+                      setShowRatingModal(false);
+                    }}
+                    style={{ marginTop: 6 }}
+                  >
+                    <Text style={styles.removeRatingText}>{language === 'ar' ? 'إلغاء المشاهدة' : 'Unmark watched'}</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            </View>
+          </Modal>
 
           <View style={styles.divider} />
 
@@ -204,7 +319,13 @@ export default function EpisodeDetailScreen({ route, navigation }) {
           </Section>
 
           <Section title={t.whereToWatch} accent={accent}>
-            {providers.length > 0 ? (
+            {manualWatchLink ? (
+              <TouchableOpacity onPress={() => Linking.openURL(manualWatchLink.url)}>
+                <Text style={[styles.bodyText, { color: accent }]}>
+                  Watch on {manualWatchLink.platform} →
+                </Text>
+              </TouchableOpacity>
+            ) : providers.length > 0 ? (
               <View style={styles.providersRow}>
                 {providers.map((p, i) => {
                   const name = p.provider_name.toLowerCase();
@@ -214,21 +335,17 @@ export default function EpisodeDetailScreen({ route, navigation }) {
                   else if (name.includes('osn')) url = `https://www.osnplus.com/search/${encodeURIComponent(show.name)}`;
                   else if (name.includes('starz')) url = `https://www.starzplay.com/search?q=${encodeURIComponent(show.name)}`;
                   else if (name.includes('disney')) url = `https://www.disneyplus.com/search/${encodeURIComponent(show.name)}`;
+                  else if (name.includes('apple')) url = `https://tv.apple.com/search?term=${encodeURIComponent(show.name)}`;
                   else url = `https://www.google.com/search?q=watch+${encodeURIComponent(show.name)}+on+${encodeURIComponent(p.provider_name)}`;
-
                   return (
-                  <TouchableOpacity key={i} style={styles.providerItem} onPress={() => Linking.openURL(url)}>
-                    <Image
-                      source={{ uri: `https://image.tmdb.org/t/p/w92${p.logo_path}` }}
-                      style={styles.providerLogo}
-                    />
-                    <Text style={styles.providerName} numberOfLines={1}>{p.provider_name}</Text>
-                  </TouchableOpacity>
+                    <TouchableOpacity key={i} style={styles.providerItem} onPress={() => Linking.openURL(url)}>
+                      <Image source={{ uri: `https://image.tmdb.org/t/p/w92${p.logo_path}` }} style={styles.providerLogo} />
+                      <Text style={styles.providerName} numberOfLines={1}>{p.provider_name}</Text>
+                    </TouchableOpacity>
                   );
                 })}
               </View>
             ) : (
-
               <TouchableOpacity
                 onPress={() => {
                   const genre = show.original_language === 'tr' ? 'Turkish TV series streaming' : 'Arabic TV series streaming';
@@ -295,12 +412,122 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
   },
+  dubbedBadge: {
+    backgroundColor: '#2A2A2C',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: '#3A3A3C',
+  },
+  dubbedBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#A08060',
+  },
   showName: {
     fontSize: 26,
     fontWeight: '800',
     color: '#F5E6D0',
     lineHeight: 32,
     marginBottom: 8,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 16,
+  },
+  whatsappBtn: {
+    backgroundColor: '#25D366',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+  },
+  whatsappBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  watchedBtn: {
+    backgroundColor: '#2A2A2C',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#3A3A3C',
+  },
+  watchedBtnActive: {
+    backgroundColor: '#4CAF5022',
+    borderColor: '#4CAF50',
+  },
+  watchedBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#F5E6D0',
+  },
+  savedBtn: {
+    backgroundColor: '#2A2A2C',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#3A3A3C',
+  },
+  savedBtnActive: {
+    backgroundColor: '#FFAB7622',
+    borderColor: '#FFAB76',
+  },
+  savedBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#F5E6D0',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalBox: {
+    backgroundColor: '#2A2A2C',
+    borderRadius: 20,
+    padding: 28,
+    alignItems: 'center',
+    width: 280,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#F5E6D0',
+    marginBottom: 6,
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    color: '#A08060',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  starsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 20,
+  },
+  star: {
+    fontSize: 36,
+    color: '#3A3A3C',
+  },
+  starFilled: {
+    color: '#FFD166',
+  },
+  skipText: {
+    fontSize: 13,
+    color: '#6B6B70',
+    textDecorationLine: 'underline',
+  },
+  removeRatingText: {
+    fontSize: 12,
+    color: '#FF6B6B',
+    textDecorationLine: 'underline',
   },
   divider: {
     height: 1,

@@ -9,9 +9,11 @@ import {
   Image,
   FlatList,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { fetchPersonDetails, fetchPersonTVCredits, IMAGE_BASE_URL } from '../services/tmdb';
 import { getWatchedShows, toggleWatched } from '../services/watchlist';
+import { fetchBlockedShows, fetchLibraryShowIds } from '../services/supabase';
 import { useLanguage } from '../context/LanguageContext';
 
 export default function ActorProfileScreen({ route, navigation }) {
@@ -22,6 +24,7 @@ export default function ActorProfileScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [bioExpanded, setBioExpanded] = useState(false);
   const [watchedIds, setWatchedIds] = useState(new Set());
+  const [instagramId, setInstagramId] = useState(null);
 
   useEffect(() => {
     getWatchedShows().then(setWatchedIds);
@@ -30,12 +33,16 @@ export default function ActorProfileScreen({ route, navigation }) {
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const [details, credits] = await Promise.all([
+      const [details, credits, extIds, blockedIds, libraryIds] = await Promise.all([
         fetchPersonDetails(personId),
         fetchPersonTVCredits(personId, language),
+        fetch(`https://api.themoviedb.org/3/person/${personId}/external_ids?api_key=df249df3a0df066640d620b5d876ef69`).then(r => r.json()),
+        fetchBlockedShows(),
+        fetchLibraryShowIds(),
       ]);
       setPerson(details);
-      setShows(credits);
+      setShows(credits.filter(s => libraryIds.has(s.id) && !blockedIds.has(s.id)));
+      if (extIds?.instagram_id) setInstagramId(extIds.instagram_id);
       setLoading(false);
     };
     load();
@@ -95,6 +102,15 @@ export default function ActorProfileScreen({ route, navigation }) {
             ) : (
               <Text style={styles.noBio}>{language === 'ar' ? 'لا توجد سيرة ذاتية متاحة' : 'No biography available.'}</Text>
             )}
+
+            {instagramId ? (
+              <TouchableOpacity
+                style={styles.instagramBtn}
+                onPress={() => Linking.openURL(`https://instagram.com/${instagramId}`)}
+              >
+                <Text style={styles.instagramBtnText}>📸 Instagram</Text>
+              </TouchableOpacity>
+            ) : null}
 
             <Text style={styles.sectionTitle}>
               {language === 'ar' ? 'المسلسلات' : 'Shows'}
@@ -204,6 +220,19 @@ const styles = StyleSheet.create({
     color: '#6B6B70',
     fontStyle: 'italic',
     marginBottom: 24,
+  },
+  instagramBtn: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#2A2A2C',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    marginBottom: 20,
+  },
+  instagramBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#F5E6D0',
   },
   sectionTitle: {
     fontSize: 17,

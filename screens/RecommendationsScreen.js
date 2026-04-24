@@ -13,8 +13,9 @@ import {
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { fetchShows, fetchAllShows, searchShows, IMAGE_BASE_URL } from '../services/tmdb';
-import { getWatchedShows, toggleWatched } from '../services/watchlist';
+import { getWatchedShows, toggleWatched, getAllRatings, getSavedShows, toggleSaved } from '../services/watchlist';
 import { getShowScores, TRAITS } from '../services/scoring';
+import { fetchBlockedShows, fetchDubbedShowIds, fetchTitleOverrides } from '../services/supabase';
 import { useLanguage } from '../context/LanguageContext';
 import SkeletonCard from '../components/SkeletonCard';
 
@@ -26,26 +27,53 @@ export default function RecommendationsScreen({ route, navigation }) {
     Syrian: 'سوري', Lebanese: 'لبناني', 'All Arabic': 'كل العربي',
   };
   const [shows, setShows] = useState([]);
+  const [shuffled, setShuffled] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [mode, setMode] = useState('discovery');
+  const [mode, setMode] = useState('all');
   const [showScores, setShowScores] = useState({});
   const [activeFilter, setActiveFilter] = useState(null);
   const [scoringDone, setScoringDone] = useState(false);
   const [watchedIds, setWatchedIds] = useState(new Set());
+  const [savedIds, setSavedIds] = useState(new Set());
+  const [ratings, setRatings] = useState({});
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
+  const [dubbedOnly, setDubbedOnly] = useState(false);
+  const [dubbedIds, setDubbedIds] = useState(new Set());
 
   useFocusEffect(useCallback(() => {
     getWatchedShows().then(setWatchedIds);
+    getAllRatings().then(setRatings);
+    getSavedShows().then(setSavedIds);
+    if (region === 'Turkish') fetchDubbedShowIds('Turkish').then(setDubbedIds);
   }, []));
+
+  const applyTitleOverrides = (showList, overrides) =>
+    showList.map(s => overrides[s.id] ? { ...s, name: overrides[s.id] } : s);
 
   const loadShows = async (selectedMode) => {
     setLoading(true);
-    let data;
-    if (selectedMode === 'all') data = await fetchAllShows(region, null, language, 'first_air_date.desc');
-    else data = await fetchShows(region, null, language);
+    const [blockedIds, titleOverrides] = await Promise.all([fetchBlockedShows(), fetchTitleOverrides()]);
+    const onShowsAdded = selectedMode === 'all' ? (newShows) => {
+      const filtered = applyTitleOverrides(newShows.filter(s => !blockedIds.has(s.id)), titleOverrides);
+      if (filtered.length > 0) {
+        setShows(prev => {
+          const existingIds = new Set(prev.map(s => s.id));
+          const unique = filtered.filter(s => !existingIds.has(s.id));
+          if (unique.length === 0) return prev;
+          const combined = [...prev, ...unique];
+          return combined.sort((a, b) => (b.first_air_date || '').localeCompare(a.first_air_date || ''));
+        });
+        generateScoresInBackground(filtered);
+      }
+    } : null;
+    const rawData = await (selectedMode === 'all'
+      ? fetchAllShows(region, null, language, 'first_air_date.desc', onShowsAdded)
+      : fetchShows(region, null, language));
+    const data = applyTitleOverrides(rawData.filter(s => !blockedIds.has(s.id)), titleOverrides);
     setShows(data);
+    setShuffled(false);
     setLoading(false);
     generateScoresInBackground(data);
   };
@@ -71,7 +99,7 @@ export default function RecommendationsScreen({ route, navigation }) {
   };
 
   useEffect(() => {
-    loadShows(mode);
+    loadShows('all');
   }, [region, language]);
 
   const handleModeSwitch = (selectedMode) => {
@@ -87,46 +115,64 @@ export default function RecommendationsScreen({ route, navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Text style={[styles.backText, { color: accent }]}>← Back</Text>
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{language === 'ar' ? regionNamesAr[region] || region : region}</Text>
-
-        <View style={styles.toggle}>
-          <TouchableOpacity
-            style={[styles.toggleBtn, mode === 'discovery' && { backgroundColor: accent }]}
-            onPress={() => handleModeSwitch('discovery')}
-          >
-            <Text style={[styles.toggleText, mode === 'discovery' && { color: '#1C1C1E' }]}>Discovery</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.toggleBtn, mode === 'all' && { backgroundColor: accent }]}
-            onPress={() => handleModeSwitch('all')}
-          >
-            <Text style={[styles.toggleText, mode === 'all' && { color: '#1C1C1E' }]}>View All</Text>
-          </TouchableOpacity>
-        </View>
-        {mode === 'discovery' && (
-          <Text style={styles.discoveryHint}>{language === 'ar' ? 'اختيارات جديدة في كل زيارة' : 'A fresh set of picks every time you visit'}</Text>
-        )}
-        {mode === 'all' && (
-          <>
-            <Text style={styles.discoveryHint}>{language === 'ar' ? 'الأحدث أولاً' : 'Most recent shows shown first'}</Text>
-            <TextInput
-              style={styles.searchBar}
-              placeholder={language === 'ar' ? 'ابحث عن مسلسل...' : 'Search shows...'}
-              placeholderTextColor="#6B6B70"
-              value={searchQuery}
-              onChangeText={async (text) => {
-                setSearchQuery(text);
-                if (text.trim().length > 1) {
-                  setSearching(true);
-                  const results = await searchShows(text, region, language);
-                  setSearchResults(results);
-                  setSearching(false);
-                } else {
-                  setSearchResults([]);
+        <View style={styles.headerRow}>
+          <Text style={styles.headerTitle}>{language === 'ar' ? regionNamesAr[region] || region : region}</Text>
+          <View style={styles.shuffleRow}>
+            {shuffled && (
+              <TouchableOpacity
+                style={styles.resetBtn}
+                onPress={() => loadShows('all')}
+              >
+                <Text style={styles.resetBtnText}>{language === 'ar' ? 'إعادة' : 'Reset'}</Text>
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity
+              style={[styles.shuffleBtn, shuffled && { backgroundColor: accent }]}
+              onPress={() => {
+                const arr = [...shows];
+                for (let i = arr.length - 1; i > 0; i--) {
+                  const j = Math.floor(Math.random() * (i + 1));
+                  [arr[i], arr[j]] = [arr[j], arr[i]];
                 }
+                setShows(arr);
+                setShuffled(true);
               }}
-            />
-          </>
+            >
+              <Text style={[styles.shuffleBtnText, shuffled && { color: '#1C1C1E' }]}>🔀 {language === 'ar' ? 'خلط' : 'Shuffle'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <Text style={styles.discoveryHint}>{shuffled ? (language === 'ar' ? 'ترتيب عشوائي' : 'Shuffled order') : (language === 'ar' ? 'الأحدث أولاً' : 'Most recent shows shown first')}</Text>
+        <TextInput
+          style={styles.searchBar}
+          placeholder={language === 'ar' ? 'ابحث عن مسلسل...' : 'Search shows...'}
+          placeholderTextColor="#6B6B70"
+          value={searchQuery}
+          onChangeText={async (text) => {
+            setSearchQuery(text);
+            if (text.trim().length > 1) {
+              setSearching(true);
+              const [results, blockedIds] = await Promise.all([searchShows(text, region, language), fetchBlockedShows()]);
+              setSearchResults(results.filter(s => !blockedIds.has(s.id)));
+              setSearching(false);
+            } else {
+              setSearchResults([]);
+            }
+          }}
+        />
+
+        {region === 'Turkish' && (
+          <TouchableOpacity
+            style={[styles.dubbedToggle, dubbedOnly && { backgroundColor: '#C97A63' }]}
+            onPress={() => setDubbedOnly(!dubbedOnly)}
+          >
+            <Text style={[styles.dubbedToggleText, dubbedOnly && { color: '#1C1C1E' }]}>
+              {dubbedOnly
+                ? (language === 'ar' ? '🎙 مدبلج بالعربية' : '🎙 Dubbed in Arabic')
+                : (language === 'ar' ? '🎙 عرض المدبلج بالعربية فقط' : '🎙 Show Arabic dubbed only')}
+            </Text>
+          </TouchableOpacity>
         )}
 
         <View style={styles.filterRow}>
@@ -170,8 +216,9 @@ export default function RecommendationsScreen({ route, navigation }) {
       ) : (
         <FlatList
           data={(() => {
-            if (mode === 'all' && searchQuery.trim().length > 1) return searchResults;
-            return activeFilter ? shows.filter((s) => (showScores[s.id]?.[activeFilter] || 0) >= 60) : shows;
+            let list = searchQuery.trim().length > 1 ? searchResults : activeFilter ? shows.filter((s) => (showScores[s.id]?.[activeFilter] || 0) >= 60) : shows;
+            if (dubbedOnly && dubbedIds.size > 0) list = list.filter(s => dubbedIds.has(s.id));
+            return list;
           })()}
           keyExtractor={(item) => item.id.toString()}
           contentContainerStyle={styles.list}
@@ -184,7 +231,7 @@ export default function RecommendationsScreen({ route, navigation }) {
             <TouchableOpacity
               style={styles.card}
               activeOpacity={0.85}
-              onPress={() => navigation.navigate('EpisodeDetail', { show: item, accent })}
+              onPress={() => navigation.navigate('EpisodeDetail', { show: item, accent, isDubbed: dubbedIds.has(item.id) })}
             >
               <View style={[styles.accentBar, { backgroundColor: accent }]} />
               <View style={styles.posterWrapper}>
@@ -193,9 +240,15 @@ export default function RecommendationsScreen({ route, navigation }) {
                 ) : null}
                 <TouchableOpacity
                   style={[styles.watchedBtn, watchedIds.has(item.id) && styles.watchedBtnActive]}
-                  onPress={async () => setWatchedIds(await toggleWatched(item.id))}
+                  onPress={async () => setWatchedIds(await toggleWatched(item.id, item))}
                 >
                   <Text style={styles.watchedBtnText}>✓</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.savedBtn, savedIds.has(item.id) && styles.savedBtnActive]}
+                  onPress={async () => setSavedIds(await toggleSaved(item.id, item))}
+                >
+                  <Text style={styles.savedBtnText}>{savedIds.has(item.id) ? '🔖' : '🔖'}</Text>
                 </TouchableOpacity>
               </View>
               <View style={styles.cardContent}>
@@ -203,6 +256,9 @@ export default function RecommendationsScreen({ route, navigation }) {
                 <Text style={[styles.meta, { color: accent }]}>
                   {item.first_air_date ? item.first_air_date.split('-')[0] : ''}
                 </Text>
+                {ratings[item.id] ? (
+                  <Text style={styles.userRating}>{'★'.repeat(ratings[item.id])}{'☆'.repeat(5 - ratings[item.id])}</Text>
+                ) : null}
                 <Text style={[styles.readMore, { color: accent }]}>Read more →</Text>
               </View>
             </TouchableOpacity>
@@ -233,10 +289,46 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '600',
   },
+  headerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 4,
+  },
   headerTitle: {
     fontSize: 28,
     fontWeight: '800',
     color: '#F5E6D0',
+  },
+  shuffleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  shuffleBtn: {
+    backgroundColor: '#2A2A2C',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: '#3A3A3C',
+  },
+  shuffleBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#A08060',
+  },
+  resetBtn: {
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: '#3A3A3C',
+  },
+  resetBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6B6B70',
   },
   headerSub: {
     fontSize: 14,
@@ -259,6 +351,22 @@ const styles = StyleSheet.create({
   toggleText: {
     fontSize: 13,
     fontWeight: '600',
+    color: '#A08060',
+  },
+  dubbedToggle: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#2A2A2C',
+    borderRadius: 20,
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderWidth: 1,
+    borderColor: '#3A3A3C',
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  dubbedToggleText: {
+    fontSize: 12,
+    fontWeight: '700',
     color: '#A08060',
   },
   searchBar: {
@@ -368,6 +476,23 @@ const styles = StyleSheet.create({
     backgroundColor: '#4CAF50',
     borderColor: '#4CAF50',
   },
+  savedBtn: {
+    position: 'absolute',
+    top: 4,
+    right: 4,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  savedBtnActive: {
+    backgroundColor: 'rgba(255,171,118,0.85)',
+  },
+  savedBtnText: {
+    fontSize: 11,
+  },
   watchedBtnText: {
     fontSize: 11,
     fontWeight: '800',
@@ -415,6 +540,11 @@ const styles = StyleSheet.create({
   episodeName: {
     fontSize: 11,
     color: '#F5E6D0',
+  },
+  userRating: {
+    fontSize: 13,
+    color: '#FFD166',
+    marginBottom: 4,
   },
   readMore: {
     fontSize: 12,
