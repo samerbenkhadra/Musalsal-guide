@@ -111,16 +111,14 @@ const run = async () => {
       const romance = row['Romance (0-100)'];
       const drama = row['Drama (0-100)'];
       const suspense = row['Suspense (0-100)'];
-      const betrayal = row['Betrayal (0-100)'];
       const comedy = row['Comedy (0-100)'];
 
-if ([romance, drama, suspense, betrayal].some(v => v !== '' && v !== undefined && v !== null)) {
+      if ([romance, drama, suspense, comedy].some(v => v !== '' && v !== undefined && v !== null)) {
         scores.push({
           show_id: showId,
           romance: Number(romance) || 0,
           drama: Number(drama) || 0,
           suspense: Number(suspense) || 0,
-          betrayal: Number(betrayal) || 0,
           comedy: Number(comedy) || 0,
         });
       }
