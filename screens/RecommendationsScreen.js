@@ -216,7 +216,7 @@ export default function RecommendationsScreen({ route, navigation }) {
       ) : (
         <FlatList
           data={(() => {
-            let list = searchQuery.trim().length > 1 ? searchResults : activeFilter ? shows.filter((s) => (showScores[s.id]?.[activeFilter] || 0) >= 60) : shows;
+            let list = searchQuery.trim().length > 1 ? searchResults : activeFilter ? shows.filter((s) => (showScores[s.id]?.[activeFilter] || 0) >= 65) : shows;
             if (dubbedOnly && dubbedIds.size > 0) list = list.filter(s => dubbedIds.has(s.id));
             return list;
           })()}

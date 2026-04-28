@@ -4,7 +4,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 export const fetchShowScore = async (showId) => {
   try {
     const res = await fetch(
-      `${SUPABASE_URL}/rest/v1/show_scores?show_id=eq.${showId}&select=romance,drama,suspense,betrayal,comedy`,
+      `${SUPABASE_URL}/rest/v1/show_scores?show_id=eq.${showId}&select=romance,drama,suspense,comedy`,
       {
         headers: {
           apikey: SUPABASE_ANON_KEY,
