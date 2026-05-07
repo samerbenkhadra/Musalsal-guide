@@ -14,15 +14,23 @@ const headers = {
 const PLATFORM_MAP = {
   'shahid': { name: 'Shahid', url: 'https://shahid.mbc.net' },
   'netflix': { name: 'Netflix', url: 'https://www.netflix.com' },
-  'osn': { name: 'OSN', url: 'https://www.osnplus.com' },
+  'osn': { name: 'OSN+', url: 'https://www.osnplus.com' },
+  'osn+': { name: 'OSN+', url: 'https://www.osnplus.com' },
   'starz': { name: 'Starz Play', url: 'https://www.starzplay.com' },
+  'starzplay': { name: 'Starz Play', url: 'https://www.starzplay.com' },
   'weyyak': { name: 'Weyyak', url: 'https://weyyak.com' },
   'watchit': { name: 'Watch iT', url: 'https://watchit.ae' },
+  'watch it': { name: 'Watch iT', url: 'https://watchit.ae' },
   'mbc': { name: 'MBC', url: 'https://www.mbc.net' },
   'youtube': { name: 'YouTube', url: 'https://www.youtube.com' },
   'apple': { name: 'Apple TV', url: 'https://tv.apple.com' },
   'appletv': { name: 'Apple TV', url: 'https://tv.apple.com' },
   'tod': { name: 'TOD', url: 'https://www.tod.tv' },
+  'adtv': { name: 'AD TV', url: 'https://www.adtv.ae' },
+  'ad tv': { name: 'AD TV', url: 'https://www.adtv.ae' },
+  'yango': { name: 'Yango Play', url: 'https://play.yango.com' },
+  'yango play': { name: 'Yango Play', url: 'https://play.yango.com' },
+  'viu': { name: 'Viu', url: 'https://www.viu.com' },
 };
 
 const resolveWatchEntry = (raw) => {
@@ -94,12 +102,13 @@ const run = async () => {
         notBlockedIds.push(showId);
       }
 
-      // Where to watch
+      // Where to watch (supports comma-separated values)
       const rawWatch = row['Where to Watch'] || row['Where to watch'] || row['Where to watch?'] || row['Where To Watch'] || '';
-      if (rawWatch && rawWatch.toString().trim().length > 3) {
-        const resolved = resolveWatchEntry(rawWatch.toString().trim());
-        if (resolved) {
-          whereToWatch.push({ show_id: showId, url: resolved.url, platform: resolved.platform });
+      if (rawWatch && rawWatch.toString().trim().length > 0) {
+        const entries = rawWatch.toString().split(',').map(s => s.trim()).filter(Boolean);
+        for (const entry of entries) {
+          const resolved = resolveWatchEntry(entry);
+          if (resolved) whereToWatch.push({ show_id: showId, url: resolved.url, platform: resolved.platform });
         }
       }
 
@@ -150,7 +159,7 @@ const run = async () => {
 
   const uniqueBlockedShows = [...new Map(blockedShows.map(r => [r.show_id, r])).values()];
   const uniqueScores = [...new Map(scores.map(r => [r.show_id, r])).values()];
-  const uniqueWhereToWatch = [...new Map(whereToWatch.map(r => [r.show_id, r])).values()];
+  const uniqueWhereToWatch = [...new Map(whereToWatch.map(r => [`${r.show_id}_${r.platform}`, r])).values()];
   const uniqueTitleOverrides = [...new Map(titleOverrides.map(r => [r.show_id, r])).values()];
 
   console.log(`\nUploading ${uniqueBlockedShows.length} blocked shows...`);

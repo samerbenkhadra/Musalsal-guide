@@ -319,12 +319,16 @@ export default function EpisodeDetailScreen({ route, navigation }) {
           </Section>
 
           <Section title={t.whereToWatch} accent={accent}>
-            {manualWatchLink ? (
-              <TouchableOpacity onPress={() => Linking.openURL(manualWatchLink.url)}>
-                <Text style={[styles.bodyText, { color: accent }]}>
-                  Watch on {manualWatchLink.platform} →
-                </Text>
-              </TouchableOpacity>
+            {manualWatchLink && manualWatchLink.length > 0 ? (
+              <View style={{ gap: 8 }}>
+                {manualWatchLink.map((entry, i) => (
+                  <TouchableOpacity key={i} onPress={() => Linking.openURL(entry.url)}>
+                    <Text style={[styles.bodyText, { color: accent }]}>
+                      Watch on {entry.platform} →
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
             ) : providers.length > 0 ? (
               <View style={styles.providersRow}>
                 {providers.map((p, i) => {

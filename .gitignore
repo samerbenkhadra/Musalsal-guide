@@ -43,4 +43,4 @@ app-example
 /android
 
 # secrets
-services/config.js
+# services/config.js — key stored as EAS secret

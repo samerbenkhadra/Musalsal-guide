@@ -111,7 +111,7 @@ export const fetchWhereToWatch = async (showId) => {
       { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }
     );
     const data = await res.json();
-    return data?.[0] || null;
+    return data?.length > 0 ? data : null;
   } catch {
     return null;
   }

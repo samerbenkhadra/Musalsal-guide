@@ -108,8 +108,12 @@ export const fetchWatchProviders = async (showId) => {
     const results = data.results || {};
     const region = results['BH'] || results['SA'] || results['AE'] || results['EG'] || results['US'] || null;
     if (!region) return [];
+    const blockedProviders = ['peacock', 'hulu', 'hbo', 'paramount+', 'showtime', 'tubi', 'fubo'];
     const providers = [...(region.flatrate || []), ...(region.free || []), ...(region.ads || [])];
-    const unique = providers.filter((p, index, self) => self.findIndex(x => x.provider_name === p.provider_name) === index);
+    const unique = providers.filter((p, index, self) =>
+      self.findIndex(x => x.provider_name === p.provider_name) === index &&
+      !blockedProviders.some(b => p.provider_name.toLowerCase().includes(b))
+    );
     return unique;
   } catch {
     return [];
