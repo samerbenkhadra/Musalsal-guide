@@ -15,7 +15,7 @@ import {
   Modal,
 } from 'react-native';
 import { IMAGE_BASE_URL, fetchWatchProviders, fetchShowById } from '../services/tmdb';
-import { CLAUDE_API_KEY } from '../services/config';
+const CLAUDE_API_KEY = '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';
 import { getShowScores, TRAITS } from '../services/scoring';
 import { fetchWhereToWatch, fetchTitleOverride } from '../services/supabase';
 import { getWatchedShows, markWatched, toggleWatched, getRating, saveRating, removeRating, getSavedShows, toggleSaved } from '../services/watchlist';

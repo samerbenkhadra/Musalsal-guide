@@ -19,7 +19,7 @@ import { getSavedShowsWithMeta, getWatchedShowsWithMeta, toggleSaved } from '../
 import { useFocusEffect } from '@react-navigation/native';
 import { useLanguage } from '../context/LanguageContext';
 import { usePostHog } from 'posthog-react-native';
-import { CLAUDE_API_KEY } from '../services/config';
+const CLAUDE_API_KEY = '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';
 
 const POPULAR_ACTORS = [
   // Lebanese
