@@ -9,64 +9,69 @@ import {
   Image,
   TextInput,
   ActivityIndicator,
+  Modal,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
-import { fetchActorNameOverrides } from '../services/supabase';
+import { fetchActorNameOverrides, fetchScoredShowsForChat } from '../services/supabase';
 import { searchPerson, IMAGE_BASE_URL, fetchShowById, fetchPersonDetails } from '../services/tmdb';
 import { getSavedShowsWithMeta, getWatchedShowsWithMeta, toggleSaved } from '../services/watchlist';
 import { useFocusEffect } from '@react-navigation/native';
 import { useLanguage } from '../context/LanguageContext';
+import { usePostHog } from 'posthog-react-native';
+import { CLAUDE_API_KEY } from '../services/config';
 
 const POPULAR_ACTORS = [
   // Lebanese
-  { id: 2047345, name: 'Nadine Njeim' },
-  { id: 225883, name: 'Carmen Lebbos' },
-  { id: 231328, name: 'Takla Chamoun' },
-  { id: 2047355, name: 'Pamela Kik' },
-  { id: 2804039, name: 'Carmen Bsaibes' },
-  { id: 3790379, name: 'Nour Ali' },
-  { id: 230739, name: 'Cyrine Abdel Nour' },
-  { id: 1326619, name: 'Carol Abboud' },
-  { id: 108828, name: 'Georges Khabbaz' },
+  { id: 2047345, name: 'Nadine Njeim', flag: '🇱🇧' },
+  { id: 225883, name: 'Carmen Lebbos', flag: '🇱🇧' },
+  { id: 231328, name: 'Takla Chamoun', flag: '🇱🇧' },
+  { id: 2047355, name: 'Pamela Kik', flag: '🇱🇧' },
+  { id: 2804039, name: 'Carmen Bsaibes', flag: '🇱🇧' },
+  { id: 3790379, name: 'Nour Ali', flag: '🇱🇧' },
+  { id: 230739, name: 'Cyrine Abdel Nour', flag: '🇱🇧' },
+  { id: 1326619, name: 'Carol Abboud', flag: '🇱🇧' },
+  { id: 108828, name: 'Georges Khabbaz', flag: '🇱🇧' },
   // Egyptian
-  { id: 13202, name: 'Adel Emam' },
-  { id: 130206, name: 'Yousra' },
-  { id: 130207, name: 'Mona Zaki' },
-  { id: 127782, name: 'Nour' },
-  { id: 226438, name: 'Hend Sabry' },
-  { id: 140869, name: 'Karim Abdel Aziz' },
-  { id: 232318, name: 'Ahmed Ezz' },
-  { id: 238566, name: 'Nour El-Sherif' },
-  { id: 1448354, name: 'Poussi' },
-  { id: 238568, name: 'Hussein Fahmy' },
-  { id: 1299990, name: 'Soad Hosny' },
+  { id: 13202, name: 'Adel Emam', flag: '🇪🇬' },
+  { id: 130206, name: 'Yousra', flag: '🇪🇬' },
+  { id: 130207, name: 'Mona Zaki', flag: '🇪🇬' },
+  { id: 127782, name: 'Nour', flag: '🇪🇬' },
+  { id: 226438, name: 'Hend Sabry', flag: '🇪🇬' },
+  { id: 140869, name: 'Karim Abdel Aziz', flag: '🇪🇬' },
+  { id: 232318, name: 'Ahmed Ezz', flag: '🇪🇬' },
+  { id: 238566, name: 'Nour El-Sherif', flag: '🇪🇬' },
+  { id: 1448354, name: 'Poussi', flag: '🇪🇬' },
+  { id: 238568, name: 'Hussein Fahmy', flag: '🇪🇬' },
+  { id: 1299990, name: 'Soad Hosny', flag: '🇪🇬' },
   // Syrian
-  { id: 1259102, name: 'Tim Hassan' },
-  { id: 2297163, name: 'Maxim Khalil' },
-  { id: 2852223, name: 'Sulaf Fawakherji' },
-  { id: 2361943, name: 'Bassem Yakhour' },
-  { id: 1260464, name: 'Amal Arafa' },
-  { id: 1808074, name: 'Bassel Khayyat' },
-  { id: 70577, name: 'Ghassan Massoud' },
-  { id: 1250791, name: 'Kosai Khauli' },
-  { id: 1934213, name: 'Mona Wassef' },
-  { id: 1083478, name: 'Sabah Jazairi' },
-  { id: 4090960, name: 'Maram Ali' },
+  { id: 1259102, name: 'Tim Hassan', flag: '🇸🇾' },
+  { id: 2297163, name: 'Maxim Khalil', flag: '🇸🇾' },
+  { id: 2852223, name: 'Sulaf Fawakherji', flag: '🇸🇾' },
+  { id: 2361943, name: 'Bassem Yakhour', flag: '🇸🇾' },
+  { id: 1260464, name: 'Amal Arafa', flag: '🇸🇾' },
+  { id: 1808074, name: 'Bassel Khayyat', flag: '🇸🇾' },
+  { id: 70577, name: 'Ghassan Massoud', flag: '🇸🇾' },
+  { id: 1250791, name: 'Kosai Khauli', flag: '🇸🇾' },
+  { id: 1934213, name: 'Mona Wassef', flag: '🇸🇾' },
+  { id: 1083478, name: 'Sabah Jazairi', flag: '🇸🇾' },
+  { id: 4090960, name: 'Maram Ali', flag: '🇸🇾' },
   // Gulf
-  { id: 1412399, name: 'Fahad Albutairi' },
+  { id: 1412399, name: 'Fahad Albutairi', flag: '🇸🇦' },
   // Turkish
-  { id: 1078769, name: 'Kıvanç Tatlıtuğ' },
-  { id: 1424928, name: 'Burak Özçivit' },
-  { id: 142855, name: 'Tuba Büyüküstün' },
-  { id: 145499, name: 'Beren Saat' },
-  { id: 239258, name: 'Hazal Kaya' },
-  { id: 120879, name: 'Engin Altan Düzyatan' },
-  { id: 59764, name: 'Halit Ergenç' },
-  { id: 1397246, name: 'Barış Arduç' },
-  { id: 1004806, name: 'Engin Akyürek' },
-  { id: 134497, name: 'Kerem Bürsin' },
-  { id: 99314, name: 'Yılmaz Erdoğan' },
-  { id: 1254465, name: 'Neslihan Atagül' },
-  { id: 1527369, name: 'Esra Bilgiç' },
+  { id: 1078769, name: 'Kıvanç Tatlıtuğ', flag: '🇹🇷' },
+  { id: 1424928, name: 'Burak Özçivit', flag: '🇹🇷' },
+  { id: 142855, name: 'Tuba Büyüküstün', flag: '🇹🇷' },
+  { id: 145499, name: 'Beren Saat', flag: '🇹🇷' },
+  { id: 239258, name: 'Hazal Kaya', flag: '🇹🇷' },
+  { id: 120879, name: 'Engin Altan Düzyatan', flag: '🇹🇷' },
+  { id: 59764, name: 'Halit Ergenç', flag: '🇹🇷' },
+  { id: 1397246, name: 'Barış Arduç', flag: '🇹🇷' },
+  { id: 1004806, name: 'Engin Akyürek', flag: '🇹🇷' },
+  { id: 134497, name: 'Kerem Bürsin', flag: '🇹🇷' },
+  { id: 99314, name: 'Yılmaz Erdoğan', flag: '🇹🇷' },
+  { id: 1254465, name: 'Neslihan Atagül', flag: '🇹🇷' },
+  { id: 1527369, name: 'Esra Bilgiç', flag: '🇹🇷' },
 ];
 
 const COLLECTIONS = [
@@ -174,7 +179,7 @@ const COLLECTIONS = [
 const regions = [
   { name: 'Egyptian', nameAr: 'مصري', emoji: '🇪🇬', color: '#C9637A', cardBg: '#52303C' },
   { name: 'Turkish', nameAr: 'تركي', emoji: '🇹🇷', color: '#C97A63', cardBg: '#523830' },
-  { name: 'Gulf', nameAr: 'خليجي', emoji: '🇸🇦', color: '#7AC963', cardBg: '#305238' },
+  { name: 'Gulf', nameAr: 'خليجي', emoji: '🇸🇦🇰🇼', color: '#7AC963', cardBg: '#305238' },
   { name: 'Syrian', nameAr: 'سوري', emoji: '🇸🇾', color: '#637AC9', cardBg: '#303852' },
   { name: 'Lebanese', nameAr: 'لبناني', emoji: '🇱🇧', color: '#C96363', cardBg: '#523030' },
   { name: 'All Arabic', nameAr: 'كل العربي', emoji: '🌍', color: '#B39DDB', cardBg: '#30304A' },
@@ -193,6 +198,7 @@ const getDaysUntilNext = () => {
 };
 
 export default function RegionSelectionScreen({ navigation }) {
+  const posthog = usePostHog();
   const [mainMode, setMainMode] = useState('discover');
   const [browseMode, setBrowseMode] = useState('actor');
   const [searchQuery, setSearchQuery] = useState('');
@@ -206,6 +212,41 @@ export default function RegionSelectionScreen({ navigation }) {
   const [watchedShows, setWatchedShows] = useState([]);
   const [selectedIndex, setSelectedIndex] = useState(getFeaturedIndex());
   const { language, toggleLanguage } = useLanguage();
+
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatResults, setChatResults] = useState([]);
+
+  const getRecommendations = async () => {
+    if (!chatInput.trim()) return;
+    setChatLoading(true);
+    setChatResults([]);
+    posthog?.capture('chatbot_query', { type: 'discovery', query: chatInput });
+    try {
+      const library = await fetchScoredShowsForChat();
+      const libraryText = library.map(s => `${s.id}|${s.name}|${s.region}|R:${s.romance},D:${s.drama},Su:${s.suspense},Co:${s.comedy}`).join('\n');
+      const response = await fetch('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': CLAUDE_API_KEY, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify({
+          model: 'claude-haiku-4-5-20251001',
+          max_tokens: 300,
+          messages: [{
+            role: 'user',
+            content: `You are a recommendation assistant for Arabic and Turkish TV shows. The user said: "${chatInput}"\n\nOur show library (id|name|region|scores 0-100):\n${libraryText}\n\nUse the scores to find the best matches but do NOT mention numbers or scores in your reasons. Write natural, human reasons like "shares the same emotional drama" or "features a similar slow-burn romance". Pick 2-3 shows from the library that best match what the user wants. Consider region if mentioned. Exclude shows they said they already watched. Return ONLY JSON: {"recommendations":[{"id":123,"reason":"one sentence why"}]}`
+          }],
+        }),
+      });
+      const data = await response.json();
+      const text = data.content?.[0]?.text || '';
+      const json = JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] || '{}');
+      const recs = json.recommendations || [];
+      const shows = await Promise.all(recs.map(r => fetchShowById(r.id, language).then(s => s ? { ...s, reason: r.reason } : null)));
+      setChatResults(shows.filter(Boolean));
+    } catch { setChatResults([]); }
+    setChatLoading(false);
+  };
 
   const daysUntilNext = getDaysUntilNext();
   const featuredCollection = COLLECTIONS[selectedIndex];
@@ -234,7 +275,8 @@ export default function RegionSelectionScreen({ navigation }) {
     const results = await Promise.all(
       POPULAR_ACTORS.map(async (a) => {
         const res = await fetch(`https://api.themoviedb.org/3/person/${a.id}?api_key=df249df3a0df066640d620b5d876ef69&language=${lang}`);
-        return await res.json();
+        const data = await res.json();
+        return data ? { ...data, flag: a.flag } : null;
       })
     );
     setPopularActors(results.filter(Boolean));
@@ -373,7 +415,7 @@ export default function RegionSelectionScreen({ navigation }) {
           <View>
             <Text style={styles.title}>MusalsalGo</Text>
             <Text style={styles.subtitle}>
-              {language === 'ar' ? 'اكتشف مسلسلات الشرق الأوسط. اعرف أين تشاهدها.' : 'Discover Middle Eastern TV. Find where to watch.'}
+              {language === 'ar' ? 'اكتشف مسلسلات الشرق الأوسط.' : 'Discover Middle Eastern TV.'}
             </Text>
           </View>
           <View style={styles.langToggle}>
@@ -469,6 +511,10 @@ export default function RegionSelectionScreen({ navigation }) {
                   </View>
                 )}
 
+                <TouchableOpacity style={styles.chatBtn} onPress={() => setChatOpen(true)}>
+                  <Text style={styles.chatBtnText}>{language === 'ar' ? '💬 تحدث لاكتشاف مسلسلات' : '💬 Chat to explore shows'}</Text>
+                </TouchableOpacity>
+
                 <View style={styles.collectionLabel}>
                   <Text style={styles.collectionLabelText}>
                     {language === 'ar' ? 'مجموعة اليوم' : "Today's Collection"}
@@ -497,7 +543,7 @@ export default function RegionSelectionScreen({ navigation }) {
             <View style={styles.browseToggle}>
               <TouchableOpacity
                 style={[styles.browseBtn, browseMode === 'actor' && styles.browseBtnActive]}
-                onPress={() => setBrowseMode('actor')}
+                onPress={() => { setBrowseMode('actor'); posthog?.capture('browse_mode_selected', { mode: 'actor' }); }}
               >
                 <Text style={[styles.browseBtnText, browseMode === 'actor' && styles.browseBtnTextActive]}>
                   {language === 'ar' ? 'بالممثل' : 'By Actor'}
@@ -505,7 +551,7 @@ export default function RegionSelectionScreen({ navigation }) {
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.browseBtn, browseMode === 'region' && styles.browseBtnActive]}
-                onPress={() => setBrowseMode('region')}
+                onPress={() => { setBrowseMode('region'); posthog?.capture('browse_mode_selected', { mode: 'region' }); }}
               >
                 <Text style={[styles.browseBtnText, browseMode === 'region' && styles.browseBtnTextActive]}>
                   {language === 'ar' ? 'بالمنطقة' : 'By Region'}
@@ -554,7 +600,7 @@ export default function RegionSelectionScreen({ navigation }) {
                       <TouchableOpacity
                         key={actor.id}
                         style={styles.actorChip}
-                        onPress={() => navigation.navigate('ActorProfile', { personId: actor.id, personName: actor.name, nameAr: actorNameOverrides[actor.id] || actor.name })}
+                        onPress={() => { posthog?.capture('actor_selected', { actor_id: actor.id, actor_name: actor.name }); navigation.navigate('ActorProfile', { personId: actor.id, personName: actor.name, nameAr: actorNameOverrides[actor.id] || actor.name }); }}
                       >
                         {actor.profile_path ? (
                           <Image source={{ uri: `${IMAGE_BASE_URL}${actor.profile_path}` }} style={styles.actorPhoto} />
@@ -562,7 +608,7 @@ export default function RegionSelectionScreen({ navigation }) {
                           <View style={styles.actorPhotoPlaceholder} />
                         )}
                         <Text style={styles.actorName} numberOfLines={2}>
-                          {language === 'ar' ? (actorNameOverrides[actor.id] || actor.name) : actor.name}
+                          {language === 'ar' ? (actorNameOverrides[actor.id] || actor.name) : actor.name}{actor.flag ? ` ${actor.flag}` : ''}
                         </Text>
                       </TouchableOpacity>
                     ))}
@@ -582,10 +628,12 @@ export default function RegionSelectionScreen({ navigation }) {
                       key={region.name}
                       style={[styles.card, { backgroundColor: region.cardBg }]}
                       activeOpacity={0.8}
-                      onPress={() => navigation.navigate('Recommendations', { region: region.name, accent: region.color })}
+                      onPress={() => { posthog?.capture('region_selected', { region: region.name }); navigation.navigate('Recommendations', { region: region.name, accent: region.color }); }}
                     >
-                      <Text style={styles.emoji}>{region.emoji}</Text>
-                      <Text style={[styles.label, { color: region.color }]}>{language === 'ar' ? region.nameAr : region.name}</Text>
+                      <View style={styles.cardInner}>
+                        <Text style={styles.emoji}>{region.emoji}</Text>
+                        <Text style={[styles.label, { color: region.color }]}>{language === 'ar' ? region.nameAr : region.name}</Text>
+                      </View>
                     </TouchableOpacity>
                   ))}
                 </View>
@@ -595,6 +643,55 @@ export default function RegionSelectionScreen({ navigation }) {
         )}
 
       </ScrollView>
+
+      <Modal visible={chatOpen} animationType="slide" transparent onRequestClose={() => setChatOpen(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.chatOverlay}>
+          <View style={styles.chatSheet}>
+            <View style={styles.chatHeader}>
+              <Text style={styles.chatTitle}>{language === 'ar' ? 'اقتراح مسلسل' : 'Get a Recommendation'}</Text>
+              <TouchableOpacity onPress={() => { setChatOpen(false); setChatResults([]); setChatInput(''); }}>
+                <Text style={styles.chatClose}>✕</Text>
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.chatHint}>
+              {language === 'ar' ? 'أخبرنا بمسلسل شاهدته، وسنقترح لك مسلسلات مشابهة قد تعجبك.' : "Tell us a show you watched, we can suggest similar shows you may like."}
+            </Text>
+            <View style={styles.chatInputRow}>
+              <TextInput
+                style={styles.chatInput}
+                placeholder={language === 'ar' ? 'مثال: شاهدت باب الحارة، اقترح لي مسلسلات مشابهة' : 'e.g. I watched Bab Al Hara, suggest similar shows'}
+                placeholderTextColor="#6B6B70"
+                value={chatInput}
+                onChangeText={setChatInput}
+                multiline
+              />
+              <TouchableOpacity style={styles.chatSendBtn} onPress={getRecommendations} disabled={chatLoading}>
+                <Text style={styles.chatSendText}>{chatLoading ? '...' : '→'}</Text>
+              </TouchableOpacity>
+            </View>
+            {chatLoading && <ActivityIndicator color="#FFAB76" style={{ marginTop: 20 }} />}
+            {chatResults.length > 0 && (
+              <ScrollView style={{ marginTop: 16 }} showsVerticalScrollIndicator={false}>
+                <Text style={styles.chatResultsLabel}>{language === 'ar' ? 'قد يعجبك:' : 'You might like:'}</Text>
+                {chatResults.map((show) => (
+                  <TouchableOpacity
+                    key={show.id}
+                    style={styles.chatResultCard}
+                    onPress={() => { setChatOpen(false); navigation.navigate('EpisodeDetail', { show, accent: '#FFAB76' }); }}
+                  >
+                    {show.poster_path && <Image source={{ uri: `${IMAGE_BASE_URL}${show.poster_path}` }} style={styles.chatResultPoster} />}
+                    <View style={styles.chatResultInfo}>
+                      <Text style={styles.chatResultName}>{show.name}</Text>
+                      <Text style={styles.chatResultReason}>{show.reason}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            )}
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -673,7 +770,26 @@ const styles = StyleSheet.create({
   actorName: { fontSize: 13, color: '#F5E6D0', textAlign: 'center', lineHeight: 18 },
   regionNote: { fontSize: 13, color: '#A08060', marginBottom: 14, fontStyle: 'italic' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 14 },
-  card: { width: '47%', aspectRatio: 1, borderRadius: 24, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 10, elevation: 6 },
-  emoji: { fontSize: 40, marginBottom: 10 },
-  label: { fontSize: 15, fontWeight: '700', letterSpacing: 0.3 },
+  card: { width: '47%', aspectRatio: 1.3, borderRadius: 24, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.35, shadowRadius: 10, elevation: 6 },
+  cardInner: { flex: 1, alignItems: 'center', justifyContent: 'center', width: '100%' },
+  emoji: { fontSize: 36, marginBottom: 8, textAlign: 'center' },
+  label: { fontSize: 15, fontWeight: '700', letterSpacing: 0.3, textAlign: 'center' },
+  chatBtn: { backgroundColor: '#2A2A2C', borderRadius: 16, paddingVertical: 14, paddingHorizontal: 20, marginBottom: 24, alignItems: 'center', borderWidth: 1, borderColor: '#3A3A3C' },
+  chatBtnText: { color: '#FFAB76', fontSize: 15, fontWeight: '600' },
+  chatOverlay: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
+  chatSheet: { backgroundColor: '#1C1C1E', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, maxHeight: '75%', minHeight: '50%' },
+  chatHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  chatTitle: { fontSize: 18, fontWeight: '700', color: '#F5E6D0' },
+  chatClose: { fontSize: 18, color: '#6B6B70' },
+  chatHint: { fontSize: 13, color: '#6B6B70', marginBottom: 16 },
+  chatInputRow: { flexDirection: 'row', gap: 10, alignItems: 'flex-end' },
+  chatInput: { flex: 1, backgroundColor: '#2A2A2C', borderRadius: 12, padding: 12, color: '#F5E6D0', fontSize: 14, maxHeight: 100 },
+  chatSendBtn: { backgroundColor: '#FFAB76', borderRadius: 12, width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  chatSendText: { color: '#1C1C1E', fontSize: 20, fontWeight: '700' },
+  chatResultsLabel: { fontSize: 14, color: '#6B6B70', marginBottom: 12, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+  chatResultCard: { flexDirection: 'row', gap: 12, marginBottom: 16, backgroundColor: '#2A2A2C', borderRadius: 14, padding: 12 },
+  chatResultPoster: { width: 60, height: 90, borderRadius: 8 },
+  chatResultInfo: { flex: 1, justifyContent: 'center' },
+  chatResultName: { fontSize: 15, fontWeight: '700', color: '#F5E6D0', marginBottom: 6 },
+  chatResultReason: { fontSize: 13, color: '#A08060', lineHeight: 18 },
 });

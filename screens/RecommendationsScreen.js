@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -12,6 +12,7 @@ import {
   TextInput,
 } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
+import { usePostHog } from 'posthog-react-native';
 import { fetchShows, fetchAllShows, searchShows, IMAGE_BASE_URL } from '../services/tmdb';
 import { getWatchedShows, toggleWatched, getAllRatings, getSavedShows, toggleSaved } from '../services/watchlist';
 import { getShowScores, TRAITS } from '../services/scoring';
@@ -22,11 +23,11 @@ import SkeletonCard from '../components/SkeletonCard';
 export default function RecommendationsScreen({ route, navigation }) {
   const { region, accent = '#FFAB76' } = route.params;
   const { language } = useLanguage();
+  const posthog = usePostHog();
   const regionNamesAr = {
     Egyptian: 'مصري', Turkish: 'تركي', Gulf: 'خليجي',
     Syrian: 'سوري', Lebanese: 'لبناني', 'All Arabic': 'كل العربي',
   };
-  const [shows, setShows] = useState([]);
   const [shuffled, setShuffled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [mode, setMode] = useState('all');
@@ -41,6 +42,7 @@ export default function RecommendationsScreen({ route, navigation }) {
   const [searching, setSearching] = useState(false);
   const [dubbedOnly, setDubbedOnly] = useState(false);
   const [dubbedIds, setDubbedIds] = useState(new Set());
+  const [titleOverrides, setTitleOverrides] = useState({});
 
   useFocusEffect(useCallback(() => {
     getWatchedShows().then(setWatchedIds);
@@ -49,16 +51,19 @@ export default function RecommendationsScreen({ route, navigation }) {
     if (region === 'Turkish') fetchDubbedShowIds('Turkish').then(setDubbedIds);
   }, []));
 
-  const applyTitleOverrides = (showList, overrides) =>
-    showList.map(s => overrides[s.id] ? { ...s, name: overrides[s.id] } : s);
+  const [rawShows, setRawShows] = useState([]);
+  const shows = useMemo(() =>
+    rawShows.map(s => titleOverrides[s.id] ? { ...s, name: titleOverrides[s.id] } : s),
+    [rawShows, titleOverrides]
+  );
 
   const loadShows = async (selectedMode) => {
     setLoading(true);
-    const [blockedIds, titleOverrides] = await Promise.all([fetchBlockedShows(), fetchTitleOverrides()]);
+    const blockedIds = await fetchBlockedShows();
     const onShowsAdded = selectedMode === 'all' ? (newShows) => {
-      const filtered = applyTitleOverrides(newShows.filter(s => !blockedIds.has(s.id)), titleOverrides);
+      const filtered = newShows.filter(s => !blockedIds.has(s.id));
       if (filtered.length > 0) {
-        setShows(prev => {
+        setRawShows(prev => {
           const existingIds = new Set(prev.map(s => s.id));
           const unique = filtered.filter(s => !existingIds.has(s.id));
           if (unique.length === 0) return prev;
@@ -71,8 +76,8 @@ export default function RecommendationsScreen({ route, navigation }) {
     const rawData = await (selectedMode === 'all'
       ? fetchAllShows(region, null, language, 'first_air_date.desc', onShowsAdded)
       : fetchShows(region, null, language));
-    const data = applyTitleOverrides(rawData.filter(s => !blockedIds.has(s.id)), titleOverrides);
-    setShows(data);
+    const data = rawData.filter(s => !blockedIds.has(s.id));
+    setRawShows(data);
     setShuffled(false);
     setLoading(false);
     generateScoresInBackground(data);
@@ -97,6 +102,10 @@ export default function RecommendationsScreen({ route, navigation }) {
     }
     setScoringDone(true);
   };
+
+  useEffect(() => {
+    fetchTitleOverrides().then(setTitleOverrides);
+  }, []);
 
   useEffect(() => {
     loadShows('all');
@@ -129,12 +138,12 @@ export default function RecommendationsScreen({ route, navigation }) {
             <TouchableOpacity
               style={[styles.shuffleBtn, shuffled && { backgroundColor: accent }]}
               onPress={() => {
-                const arr = [...shows];
+                const arr = [...rawShows];
                 for (let i = arr.length - 1; i > 0; i--) {
                   const j = Math.floor(Math.random() * (i + 1));
                   [arr[i], arr[j]] = [arr[j], arr[i]];
                 }
-                setShows(arr);
+                setRawShows(arr);
                 setShuffled(true);
               }}
             >
@@ -184,7 +193,7 @@ export default function RecommendationsScreen({ route, navigation }) {
                 activeFilter === trait.key && { backgroundColor: trait.color },
                 !scoringDone && { opacity: 0.4 },
               ]}
-              onPress={() => scoringDone && setActiveFilter(activeFilter === trait.key ? null : trait.key)}
+              onPress={() => { if (!scoringDone) return; const next = activeFilter === trait.key ? null : trait.key; setActiveFilter(next); if (next) posthog?.capture('filter_applied', { filter: next, region }); }}
             >
               <Text style={[styles.filterPillText, activeFilter === trait.key && { color: '#1C1C1E' }]}>
                 {trait.label}
@@ -196,13 +205,6 @@ export default function RecommendationsScreen({ route, navigation }) {
             : !activeFilter && <Text style={styles.scoringHint}>{language === 'ar' ? 'اضغط للتصفية حسب الموضوع' : 'tap to filter by theme'}</Text>
           }
         </View>
-        {activeFilter && scoringDone && (
-          <View style={[styles.activeFilterBadge, { backgroundColor: TRAITS.find(t => t.key === activeFilter)?.color }]}>
-            <Text style={styles.activeFilterBadgeText}>
-              {language === 'ar' ? `عالي في ${TRAITS.find(t => t.key === activeFilter)?.label}` : `High in ${TRAITS.find(t => t.key === activeFilter)?.label}`}
-            </Text>
-          </View>
-        )}
       </View>
 
       {loading ? (

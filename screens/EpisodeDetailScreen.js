@@ -20,10 +20,12 @@ import { getShowScores, TRAITS } from '../services/scoring';
 import { fetchWhereToWatch, fetchTitleOverride } from '../services/supabase';
 import { getWatchedShows, markWatched, toggleWatched, getRating, saveRating, removeRating, getSavedShows, toggleSaved } from '../services/watchlist';
 import { useLanguage } from '../context/LanguageContext';
+import { usePostHog } from 'posthog-react-native';
 
 export default function EpisodeDetailScreen({ route, navigation }) {
   const { show: initialShow, accent, isDubbed = false } = route.params;
   const { language } = useLanguage();
+  const posthog = usePostHog();
   const t = {
     vibeCheck: language === 'ar' ? 'تحليل المسلسل' : 'Show Analysis',
     about: language === 'ar' ? 'عن هذا المسلسل' : 'About this show',
@@ -48,6 +50,7 @@ export default function EpisodeDetailScreen({ route, navigation }) {
   const scrollRef = useRef(null);
 
   useEffect(() => {
+    posthog?.capture('show_opened', { show_id: initialShow.id, show_name: initialShow.name });
     getShowScores(initialShow).then(setScores);
     if (initialShow.id) {
       fetchWatchProviders(initialShow.id).then(setProviders);
@@ -73,6 +76,7 @@ export default function EpisodeDetailScreen({ route, navigation }) {
     const text = input.trim();
     if (!text || loading) return;
 
+    posthog?.capture('chatbot_query', { type: 'show_detail', show_id: initialShow.id, show_name: initialShow.name, query: text });
     const userMessage = { role: 'user', content: text };
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
@@ -242,29 +246,26 @@ export default function EpisodeDetailScreen({ route, navigation }) {
 
           <View style={styles.divider} />
 
-          {scores ? (
-            <Section title={t.vibeCheck} accent={accent}>
-              <View style={styles.signalGrid}>
-                {TRAITS.map((trait) => {
-                  const score = scores[trait.key] || 0;
-                  const level = score >= 65 ? (language === 'ar' ? 'مرتفع' : 'High') : score >= 35 ? (language === 'ar' ? 'متوسط' : 'Medium') : (language === 'ar' ? 'منخفض' : 'Low');
-                  const opacity = score >= 65 ? 1 : score >= 35 ? 0.6 : 0.3;
-                  return (
-                    <View key={trait.key} style={styles.signalItem}>
-                      <Text style={styles.signalTraitLabel}>{trait.label}</Text>
-                      <View style={[styles.signalBadge, { backgroundColor: trait.color, opacity }]}>
-                        <Text style={styles.signalBadgeText}>{level}</Text>
-                      </View>
-                    </View>
-                  );
-                })}
-              </View>
-            </Section>
-          ) : (
+          {scores === null ? (
             <Section title={t.vibeCheck} accent={accent}>
               <ActivityIndicator size="small" color={accent} />
             </Section>
-          )}
+          ) : (() => {
+            const highTraits = TRAITS.filter((trait) => (scores[trait.key] || 0) >= 65);
+            const displayTraits = highTraits.length > 0 ? highTraits : TRAITS.filter((trait) => (scores[trait.key] || 0) >= 35);
+            if (displayTraits.length === 0) return null;
+            return (
+              <Section title={t.vibeCheck} accent={accent}>
+                <View style={styles.signalGrid}>
+                  {displayTraits.map((trait) => (
+                    <View key={trait.key} style={[styles.signalBadge, { backgroundColor: trait.color }]}>
+                      <Text style={styles.signalBadgeText}>{trait.label}</Text>
+                    </View>
+                  ))}
+                </View>
+              </Section>
+            );
+          })()}
 
           <Section title={t.about} accent={accent}>
             <Text style={styles.bodyText}>
@@ -322,7 +323,7 @@ export default function EpisodeDetailScreen({ route, navigation }) {
             {manualWatchLink && manualWatchLink.length > 0 ? (
               <View style={{ gap: 8 }}>
                 {manualWatchLink.map((entry, i) => (
-                  <TouchableOpacity key={i} onPress={() => Linking.openURL(entry.url)}>
+                  <TouchableOpacity key={i} onPress={() => { posthog?.capture('where_to_watch_tapped', { platform: entry.platform, show: initialShow.name }); Linking.openURL(entry.url); }}>
                     <Text style={[styles.bodyText, { color: accent }]}>
                       Watch on {entry.platform} →
                     </Text>

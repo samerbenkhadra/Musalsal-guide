@@ -143,6 +143,32 @@ export const fetchTitleOverride = async (showId) => {
   }
 };
 
+export const fetchScoredShowsForChat = async () => {
+  try {
+    const [overridesRes, scoresRes, libraryRes] = await Promise.all([
+      fetch(`${SUPABASE_URL}/rest/v1/title_overrides?select=show_id,title_en&limit=5000`, { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }),
+      fetch(`${SUPABASE_URL}/rest/v1/show_scores?select=show_id,romance,drama,suspense,comedy&limit=5000`, { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }),
+      fetch(`${SUPABASE_URL}/rest/v1/library_shows?select=show_id,region&limit=5000`, { headers: { apikey: SUPABASE_ANON_KEY, Authorization: `Bearer ${SUPABASE_ANON_KEY}` } }),
+    ]);
+    const [overrides, scores, library] = await Promise.all([overridesRes.json(), scoresRes.json(), libraryRes.json()]);
+    const overrideMap = Object.fromEntries((overrides || []).map(r => [r.show_id, r.title_en]));
+    const scoreMap = Object.fromEntries((scores || []).map(r => [r.show_id, r]));
+    const regionMap = {};
+    (library || []).forEach(r => { if (!regionMap[r.show_id]) regionMap[r.show_id] = r.region; });
+    return Object.keys(scoreMap)
+      .filter(id => regionMap[id] && (scoreMap[id].romance + scoreMap[id].drama + scoreMap[id].suspense + scoreMap[id].comedy) > 0)
+      .map(id => ({
+        id: Number(id),
+        name: overrideMap[id] || '',
+        region: regionMap[id],
+        romance: scoreMap[id].romance,
+        drama: scoreMap[id].drama,
+        suspense: scoreMap[id].suspense,
+        comedy: scoreMap[id].comedy,
+      }));
+  } catch { return []; }
+};
+
 export const fetchHighlight = async () => {
   try {
     const response = await fetch(
