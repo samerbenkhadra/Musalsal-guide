@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { CLAUDE_API_KEY } from './config';
+const CLAUDE_API_KEY = process.env.EXPO_PUBLIC_CLAUDE_API_KEY;
 import { fetchShowScore, saveShowScore } from './supabase';
 
 const CACHE_PREFIX = 'show_scores_v5_';
