@@ -45,3 +45,7 @@ app-example
 # secrets
 # services/config.js — key stored as EAS secret
 .env
+
+# Excel files
+*.xlsx
+~$*
