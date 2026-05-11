@@ -1,6 +1,20 @@
 const SUPABASE_URL = 'https://nkhhtznlasaqpatyzecp.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5raGh0em5sYXNhcXBhdHl6ZWNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4NzMxNzEsImV4cCI6MjA5MDQ0OTE3MX0.C8DSixRp9eFVJq3U43f3VPg7RwraMDAFk4hLD20noKo';
 
+export const callClaude = async (prompt) => {
+  try {
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/claude-proxy`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${SUPABASE_ANON_KEY}` },
+      body: JSON.stringify({ prompt }),
+    });
+    const data = await res.json();
+    return data.text || '';
+  } catch {
+    return '';
+  }
+};
+
 export const fetchShowScore = async (showId) => {
   try {
     const res = await fetch(

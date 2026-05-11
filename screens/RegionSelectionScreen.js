@@ -13,13 +13,12 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { fetchActorNameOverrides, fetchScoredShowsForChat } from '../services/supabase';
+import { fetchActorNameOverrides, fetchScoredShowsForChat, callClaude } from '../services/supabase';
 import { searchPerson, IMAGE_BASE_URL, fetchShowById, fetchPersonDetails } from '../services/tmdb';
 import { getSavedShowsWithMeta, getWatchedShowsWithMeta, toggleSaved } from '../services/watchlist';
 import { useFocusEffect } from '@react-navigation/native';
 import { useLanguage } from '../context/LanguageContext';
 import { usePostHog } from 'posthog-react-native';
-const CLAUDE_API_KEY = process.env.EXPO_PUBLIC_CLAUDE_API_KEY;
 
 const POPULAR_ACTORS = [
   // Lebanese
@@ -226,20 +225,8 @@ export default function RegionSelectionScreen({ navigation }) {
     try {
       const library = await fetchScoredShowsForChat();
       const libraryText = library.map(s => `${s.id}|${s.name}|${s.region}|R:${s.romance},D:${s.drama},Su:${s.suspense},Co:${s.comedy}`).join('\n');
-      const response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': CLAUDE_API_KEY, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({
-          model: 'claude-haiku-4-5-20251001',
-          max_tokens: 300,
-          messages: [{
-            role: 'user',
-            content: `You are a recommendation assistant for Arabic and Turkish TV shows. The user said: "${chatInput}"\n\nOur show library (id|name|region|scores 0-100):\n${libraryText}\n\nUse the scores to find the best matches but do NOT mention numbers or scores in your reasons. Write natural, human reasons like "shares the same emotional drama" or "features a similar slow-burn romance". Pick 2-3 shows from the library that best match what the user wants. Consider region if mentioned. Exclude shows they said they already watched. Return ONLY JSON: {"recommendations":[{"id":123,"reason":"one sentence why"}]}`
-          }],
-        }),
-      });
-      const data = await response.json();
-      const text = data.content?.[0]?.text || '';
+      const prompt = `You are a recommendation assistant for Arabic and Turkish TV shows. The user said: "${chatInput}"\n\nOur show library (id|name|region|scores 0-100):\n${libraryText}\n\nUse the scores to find the best matches but do NOT mention numbers or scores in your reasons. Write natural, human reasons like "shares the same emotional drama" or "features a similar slow-burn romance". Pick 2-3 shows from the library that best match what the user wants. Consider region if mentioned. Exclude shows they said they already watched. Return ONLY JSON: {"recommendations":[{"id":123,"reason":"one sentence why"}]}`;
+      const text = await callClaude(prompt);
       const json = JSON.parse(text.match(/\{[\s\S]*\}/)?.[0] || '{}');
       const recs = json.recommendations || [];
       const shows = await Promise.all(recs.map(r => fetchShowById(r.id, language).then(s => s ? { ...s, reason: r.reason } : null)));
