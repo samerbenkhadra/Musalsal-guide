@@ -41,7 +41,7 @@ export default function ActorProfileScreen({ route, navigation }) {
         fetchLibraryShowIds(),
       ]);
       setPerson(details);
-      setShows(credits.filter(s => libraryIds.has(s.id) && !blockedIds.has(s.id)));
+      setShows(credits.filter(s => libraryIds.has(s.id) && !blockedIds.has(s.id)).sort((a, b) => new Date(b.first_air_date || 0) - new Date(a.first_air_date || 0)));
       if (extIds?.instagram_id) setInstagramId(extIds.instagram_id);
       setLoading(false);
     };
