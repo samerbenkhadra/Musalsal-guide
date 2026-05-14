@@ -181,7 +181,7 @@ const regions = [
   { name: 'Gulf', nameAr: 'خليجي', emoji: '🇸🇦🇰🇼', color: '#7AC963', cardBg: '#305238' },
   { name: 'Syrian', nameAr: 'سوري', emoji: '🇸🇾', color: '#637AC9', cardBg: '#303852' },
   { name: 'Lebanese', nameAr: 'لبناني', emoji: '🇱🇧', color: '#C96363', cardBg: '#523030' },
-  { name: 'All Arabic', nameAr: 'كل العربي', emoji: '🌍', color: '#B39DDB', cardBg: '#30304A' },
+  { name: 'Shuffle All Regions', nameAr: 'كل المناطق', emoji: '🌍', color: '#B39DDB', cardBg: '#30304A' },
 ];
 
 const getFeaturedIndex = () => {

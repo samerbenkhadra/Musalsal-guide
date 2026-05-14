@@ -26,7 +26,7 @@ export default function RecommendationsScreen({ route, navigation }) {
   const posthog = usePostHog();
   const regionNamesAr = {
     Egyptian: 'مصري', Turkish: 'تركي', Gulf: 'خليجي',
-    Syrian: 'سوري', Lebanese: 'لبناني', 'All Arabic': 'كل العربي',
+    Syrian: 'سوري', Lebanese: 'لبناني', 'Shuffle All Regions': 'كل المناطق',
   };
   const [shuffled, setShuffled] = useState(false);
   const [loading, setLoading] = useState(true);
