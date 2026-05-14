@@ -126,7 +126,7 @@ const regionFacts = {
     'Many pan-Arab talent competitions were originally conceived and produced by Lebanese TV companies.',
     'Lebanese drama writers are known for their sharp dialogue — often considered the wittiest in Arab TV.',
   ],
-  'Shuffle All Regions': [
+  'All Regions': [
     'The Arab world produces over 1,500 TV drama episodes during Ramadan alone each year.',
     'Arabic TV drama reaches an estimated audience of over 400 million viewers across the world.',
     'Ramadan is the Super Bowl of Arab TV — viewership spikes by over 70% during the holy month.',
@@ -155,9 +155,9 @@ export default function EraSelectionScreen({ route, navigation }) {
   const { language } = useLanguage();
   const regionNamesAr = {
     Egyptian: 'مصري', Turkish: 'تركي', Gulf: 'خليجي',
-    Syrian: 'سوري', Lebanese: 'لبناني', 'Shuffle All Regions': 'كل العربي',
+    Syrian: 'سوري', Lebanese: 'لبناني', 'All Regions': 'كل العربي',
   };
-  const facts = regionFacts[region] || regionFacts['Shuffle All Regions'];
+  const facts = regionFacts[region] || regionFacts['All Regions'];
   const [fact] = useState(() => facts[Math.floor(Math.random() * facts.length)]);
 
   return (

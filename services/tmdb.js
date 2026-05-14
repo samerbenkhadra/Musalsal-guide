@@ -8,7 +8,7 @@ const regionCountry = {
   Gulf: { country: 'SA|AE|KW|QA|BH|OM', countries: ['SA', 'AE', 'KW', 'QA', 'BH', 'OM'], language: 'ar' },
   Syrian: { country: 'SY', language: 'ar' },
   Lebanese: { country: 'LB', language: 'ar' },
-  'Shuffle All Regions': { country: null, language: 'ar' },
+  'All Regions': { country: null, language: 'ar' },
 };
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
