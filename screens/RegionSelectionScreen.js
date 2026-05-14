@@ -266,7 +266,7 @@ export default function RegionSelectionScreen({ navigation }) {
         return data ? { ...data, flag: a.flag } : null;
       })
     );
-    setPopularActors(results.filter(Boolean));
+    setPopularActors(results.filter(Boolean).sort((a, b) => a.name.localeCompare(b.name)));
   };
 
   const loadCollections = async (lang = 'en') => {
