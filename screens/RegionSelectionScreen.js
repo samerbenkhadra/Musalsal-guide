@@ -13,7 +13,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native';
-import { fetchActorNameOverrides, fetchScoredShowsForChat, callClaude } from '../services/supabase';
+import { fetchActorNameOverrides, fetchScoredShowsForChat, callClaude, fetchBlockedShows } from '../services/supabase';
 import { searchPerson, IMAGE_BASE_URL, fetchShowById, fetchPersonDetails } from '../services/tmdb';
 import { getSavedShowsWithMeta, getWatchedShowsWithMeta, toggleSaved } from '../services/watchlist';
 import { useFocusEffect } from '@react-navigation/native';
@@ -159,7 +159,7 @@ const COLLECTIONS = [
     description: 'Easy, feel-good series filled with humour, charm, and everyday situations. Perfect for lighter viewing, these shows balance wit with familiar social dynamics.',
     descriptionAr: 'مسلسلات خفيفة ومرحة مليئة بالفكاهة والسحر والمواقف اليومية. مثالية للمشاهدة الخفيفة، تمزج بين الذكاء والديناميكيات الاجتماعية المألوفة.',
     accent: '#FFD166',
-    showIds: [79316, 157058, 130438],
+    showIds: [79316, 153708, 130438],
     actorIds: [2331034, 225883, 2047345],
   },
   {
@@ -272,10 +272,11 @@ export default function RegionSelectionScreen({ navigation }) {
   const loadCollections = async (lang = 'en') => {
     const apiLang = lang === 'ar' ? 'ar' : 'en';
     const results = {};
+    const blockedIds = await fetchBlockedShows();
     await Promise.all(
       COLLECTIONS.map(async (col) => {
         const [shows, actors] = await Promise.all([
-          Promise.all(col.showIds.map((id) => fetchShowById(id, apiLang).catch(() => null))),
+          Promise.all(col.showIds.filter(id => !blockedIds.has(id)).map((id) => fetchShowById(id, apiLang).catch(() => null))),
           Promise.all(col.actorIds.map((id) => fetchPersonDetails(id, apiLang).catch(() => null))),
         ]);
         results[col.id] = {
