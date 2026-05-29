@@ -1,5 +1,23 @@
+import { createClient } from '@supabase/supabase-js';
+import * as SecureStore from 'expo-secure-store';
+
 const SUPABASE_URL = 'https://nkhhtznlasaqpatyzecp.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5raGh0em5sYXNhcXBhdHl6ZWNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4NzMxNzEsImV4cCI6MjA5MDQ0OTE3MX0.C8DSixRp9eFVJq3U43f3VPg7RwraMDAFk4hLD20noKo';
+
+const secureStoreAdapter = {
+  getItem: (key) => SecureStore.getItemAsync(key).catch(() => null),
+  setItem: (key, value) => SecureStore.setItemAsync(key, value).catch(() => {}),
+  removeItem: (key) => SecureStore.deleteItemAsync(key).catch(() => {}),
+};
+
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    storage: secureStoreAdapter,
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false,
+  },
+});
 
 export const callClaude = async (prompt) => {
   try {

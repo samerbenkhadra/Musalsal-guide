@@ -13,6 +13,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import { fetchShowById, fetchPersonDetails, IMAGE_BASE_URL } from '../services/tmdb';
 import { getSavedShowsWithMeta, getWatchedShowsWithMeta, toggleSaved, toggleWatched } from '../services/watchlist';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 
 const COLLECTIONS = [
   {
@@ -79,6 +80,7 @@ const COLLECTIONS = [
 
 export default function DiscoverScreen({ navigation }) {
   const { language } = useLanguage();
+  const { signOut } = useAuth();
   const [collectionData, setCollectionData] = useState({});
   const [savedShows, setSavedShows] = useState([]);
   const [watchedShows, setWatchedShows] = useState([]);
@@ -115,6 +117,10 @@ export default function DiscoverScreen({ navigation }) {
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Text style={styles.backText}>← Back</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={signOut} style={styles.signOutBtn}>
+          <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
 
         <Text style={styles.pageTitle}>{language === 'ar' ? 'اكتشف' : 'Discover'}</Text>
@@ -245,6 +251,8 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#1C1C1E' },
   container: { paddingHorizontal: 24, paddingTop: 48, paddingBottom: 40 },
   backBtn: { marginBottom: 16 },
+  signOutBtn: { alignSelf: 'flex-end', marginBottom: 8 },
+  signOutText: { color: '#FF453A', fontSize: 14 },
   backText: { fontSize: 15, fontWeight: '600', color: '#FFAB76' },
   pageTitle: { fontSize: 28, fontWeight: '800', color: '#F5E6D0', marginBottom: 4 },
   pageSubtitle: { fontSize: 14, color: '#A08060', marginBottom: 28 },

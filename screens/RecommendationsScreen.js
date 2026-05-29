@@ -10,19 +10,25 @@ import {
   Modal,
   ScrollView,
   TextInput,
+  Dimensions,
 } from 'react-native';
+
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const CARD_WIDTH = (SCREEN_WIDTH - 24 - 16) / 3;
 import { useFocusEffect } from '@react-navigation/native';
 import { usePostHog } from 'posthog-react-native';
 import { fetchShows, fetchAllShows, searchShows, IMAGE_BASE_URL } from '../services/tmdb';
-import { getWatchedShows, toggleWatched, getAllRatings, getSavedShows, toggleSaved } from '../services/watchlist';
+import { getWatchedShows, toggleWatched, getAllRatings } from '../services/watchlist';
 import { getShowScores, TRAITS } from '../services/scoring';
 import { fetchBlockedShows, fetchDubbedShowIds, fetchTitleOverrides } from '../services/supabase';
 import { useLanguage } from '../context/LanguageContext';
+import { useAuth } from '../context/AuthContext';
 import SkeletonCard from '../components/SkeletonCard';
 
 export default function RecommendationsScreen({ route, navigation }) {
   const { region, accent = '#FFAB76' } = route.params;
   const { language } = useLanguage();
+  const { signOut } = useAuth();
   const posthog = usePostHog();
   const regionNamesAr = {
     Egyptian: 'مصري', Turkish: 'تركي', Gulf: 'خليجي',
@@ -35,7 +41,6 @@ export default function RecommendationsScreen({ route, navigation }) {
   const [activeFilter, setActiveFilter] = useState(null);
   const [scoringDone, setScoringDone] = useState(false);
   const [watchedIds, setWatchedIds] = useState(new Set());
-  const [savedIds, setSavedIds] = useState(new Set());
   const [ratings, setRatings] = useState({});
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -47,7 +52,6 @@ export default function RecommendationsScreen({ route, navigation }) {
   useFocusEffect(useCallback(() => {
     getWatchedShows().then(setWatchedIds);
     getAllRatings().then(setRatings);
-    getSavedShows().then(setSavedIds);
     if (region === 'Turkish') fetchDubbedShowIds('Turkish').then(setDubbedIds);
   }, []));
 
@@ -124,6 +128,9 @@ export default function RecommendationsScreen({ route, navigation }) {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Text style={[styles.backText, { color: accent }]}>← Back</Text>
         </TouchableOpacity>
+        <TouchableOpacity onPress={signOut} style={{ alignSelf: 'flex-end', marginBottom: 4 }}>
+          <Text style={{ color: '#FF453A', fontSize: 13 }}>Sign Out</Text>
+        </TouchableOpacity>
         <View style={styles.headerRow}>
           <Text style={styles.headerTitle}>{language === 'ar' ? regionNamesAr[region] || region : region}</Text>
           <View style={styles.shuffleRow}>
@@ -171,20 +178,7 @@ export default function RecommendationsScreen({ route, navigation }) {
           }}
         />
 
-        {region === 'Turkish' && (
-          <TouchableOpacity
-            style={[styles.dubbedToggle, dubbedOnly && { backgroundColor: '#C97A63' }]}
-            onPress={() => setDubbedOnly(!dubbedOnly)}
-          >
-            <Text style={[styles.dubbedToggleText, dubbedOnly && { color: '#1C1C1E' }]}>
-              {dubbedOnly
-                ? (language === 'ar' ? '🎙 مدبلج بالعربية' : '🎙 Dubbed in Arabic')
-                : (language === 'ar' ? '🎙 عرض المدبلج بالعربية فقط' : '🎙 Show Arabic dubbed only')}
-            </Text>
-          </TouchableOpacity>
-        )}
-
-        <View style={styles.filterRow}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow} contentContainerStyle={styles.filterRowContent}>
           {TRAITS.map((trait) => (
             <TouchableOpacity
               key={trait.key}
@@ -200,11 +194,21 @@ export default function RecommendationsScreen({ route, navigation }) {
               </Text>
             </TouchableOpacity>
           ))}
+          {region === 'Turkish' && (
+            <TouchableOpacity
+              style={[styles.filterPill, dubbedOnly && { backgroundColor: '#C97A63' }]}
+              onPress={() => setDubbedOnly(!dubbedOnly)}
+            >
+              <Text style={[styles.filterPillText, dubbedOnly && { color: '#1C1C1E' }]}>
+                🎙 {language === 'ar' ? 'مدبلج' : 'Dubbed'}
+              </Text>
+            </TouchableOpacity>
+          )}
           {!scoringDone
             ? <Text style={styles.scoringHint}>{language === 'ar' ? 'جارٍ التحليل...' : 'Scoring...'}</Text>
-            : !activeFilter && <Text style={styles.scoringHint}>{language === 'ar' ? 'اضغط للتصفية حسب الموضوع' : 'tap to filter by theme'}</Text>
+            : !activeFilter && !dubbedOnly && <Text style={styles.scoringHint}>{language === 'ar' ? 'اضغط للتصفية' : 'tap to filter'}</Text>
           }
-        </View>
+        </ScrollView>
       </View>
 
       {loading ? (
@@ -223,6 +227,8 @@ export default function RecommendationsScreen({ route, navigation }) {
             return list;
           })()}
           keyExtractor={(item) => item.id.toString()}
+          numColumns={3}
+          columnWrapperStyle={styles.columnWrapper}
           contentContainerStyle={styles.list}
           ListHeaderComponent={
             <Text style={styles.watchHint}>
@@ -231,38 +237,28 @@ export default function RecommendationsScreen({ route, navigation }) {
           }
           renderItem={({ item }) => (
             <TouchableOpacity
-              style={styles.card}
+              style={styles.gridCard}
               activeOpacity={0.85}
               onPress={() => navigation.navigate('EpisodeDetail', { show: item, accent, isDubbed: dubbedIds.has(item.id) })}
             >
-              <View style={[styles.accentBar, { backgroundColor: accent }]} />
-              <View style={styles.posterWrapper}>
+              <View style={styles.gridPosterWrapper}>
                 {item.poster_path ? (
-                  <Image source={{ uri: `${IMAGE_BASE_URL}${item.poster_path}` }} style={styles.poster} />
-                ) : null}
+                  <Image source={{ uri: `${IMAGE_BASE_URL}${item.poster_path}` }} style={styles.gridPoster} />
+                ) : (
+                  <View style={styles.gridPosterPlaceholder} />
+                )}
                 <TouchableOpacity
                   style={[styles.watchedBtn, watchedIds.has(item.id) && styles.watchedBtnActive]}
                   onPress={async () => setWatchedIds(await toggleWatched(item.id, item))}
                 >
                   <Text style={styles.watchedBtnText}>✓</Text>
                 </TouchableOpacity>
-                <TouchableOpacity
-                  style={[styles.savedBtn, savedIds.has(item.id) && styles.savedBtnActive]}
-                  onPress={async () => setSavedIds(await toggleSaved(item.id, item))}
-                >
-                  <Text style={styles.savedBtnText}>{savedIds.has(item.id) ? '🔖' : '🔖'}</Text>
-                </TouchableOpacity>
               </View>
-              <View style={styles.cardContent}>
-                <Text style={styles.showName} numberOfLines={1}>{item.name}</Text>
-                <Text style={[styles.meta, { color: accent }]}>
-                  {item.first_air_date ? item.first_air_date.split('-')[0] : ''}
-                </Text>
-                {ratings[item.id] ? (
-                  <Text style={styles.userRating}>{'★'.repeat(ratings[item.id])}{'☆'.repeat(5 - ratings[item.id])}</Text>
-                ) : null}
-                <Text style={[styles.readMore, { color: accent }]}>Read more →</Text>
-              </View>
+              <Text style={styles.gridTitle} numberOfLines={2}>{item.name}</Text>
+              <Text style={[styles.gridYear, { color: accent }]}>
+                {item.first_air_date ? item.first_air_date.split('-')[0] : ''}
+                {ratings[item.id] ? `  ${'★'.repeat(ratings[item.id])}` : ''}
+              </Text>
             </TouchableOpacity>
           )}
         />
@@ -355,22 +351,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#A08060',
   },
-  dubbedToggle: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#2A2A2C',
-    borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderWidth: 1,
-    borderColor: '#3A3A3C',
-    marginTop: 10,
-    marginBottom: 4,
-  },
-  dubbedToggleText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#A08060',
-  },
   searchBar: {
     backgroundColor: '#2A2A2C',
     borderRadius: 10,
@@ -387,10 +367,12 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
   },
   filterRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
     marginTop: 12,
+  },
+  filterRowContent: {
+    flexDirection: 'row',
+    gap: 8,
+    paddingRight: 8,
   },
   filterPill: {
     paddingHorizontal: 12,
@@ -435,39 +417,53 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   list: {
-    padding: 20,
+    paddingHorizontal: 12,
+    paddingTop: 8,
+    paddingBottom: 40,
   },
-  card: {
-    backgroundColor: '#2A2A2C',
-    borderRadius: 16,
-    flexDirection: 'row',
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 5,
-    marginBottom: 14,
+  columnWrapper: {
+    gap: 8,
+    marginBottom: 8,
   },
-  accentBar: {
-    width: 4,
+  gridCard: {
+    width: CARD_WIDTH,
   },
-  posterWrapper: {
+  gridPosterWrapper: {
     position: 'relative',
-    width: 70,
-    height: 105,
+    width: CARD_WIDTH,
+    height: CARD_WIDTH * 1.5,
+    borderRadius: 8,
+    overflow: 'hidden',
+    backgroundColor: '#2A2A2C',
   },
-  poster: {
-    width: 70,
-    height: 105,
+  gridPoster: {
+    width: CARD_WIDTH,
+    height: CARD_WIDTH * 1.5,
+  },
+  gridPosterPlaceholder: {
+    width: CARD_WIDTH,
+    height: CARD_WIDTH * 1.5,
+    backgroundColor: '#2A2A2C',
+  },
+  gridTitle: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#F5E6D0',
+    marginTop: 4,
+    lineHeight: 14,
+  },
+  gridYear: {
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 2,
   },
   watchedBtn: {
     position: 'absolute',
     bottom: 4,
     right: 4,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     backgroundColor: 'rgba(0,0,0,0.55)',
     borderWidth: 1,
     borderColor: '#6B6B70',
@@ -478,25 +474,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#4CAF50',
     borderColor: '#4CAF50',
   },
-  savedBtn: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  savedBtnActive: {
-    backgroundColor: 'rgba(255,171,118,0.85)',
-  },
-  savedBtnText: {
-    fontSize: 11,
-  },
   watchedBtnText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
     color: '#fff',
   },
@@ -506,50 +485,8 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     marginBottom: 12,
   },
-  cardContent: {
-    flex: 1,
-    padding: 12,
-    justifyContent: 'center',
-  },
-  showName: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#F5E6D0',
-    marginBottom: 2,
-  },
-  meta: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginBottom: 6,
-  },
-  description: {
-    fontSize: 13,
-    color: '#A08060',
-    lineHeight: 18,
-    marginBottom: 8,
-  },
-  episodeBadge: {
-    backgroundColor: '#1C1C1E',
-    borderRadius: 6,
-    padding: 6,
-    marginBottom: 8,
-  },
-  episodeBadgeText: {
-    fontSize: 11,
-    fontWeight: '700',
-    marginBottom: 2,
-  },
-  episodeName: {
-    fontSize: 11,
-    color: '#F5E6D0',
-  },
   userRating: {
-    fontSize: 13,
+    fontSize: 11,
     color: '#FFD166',
-    marginBottom: 4,
-  },
-  readMore: {
-    fontSize: 12,
-    fontWeight: '600',
   },
 });

@@ -43,7 +43,7 @@ app-example
 /android
 
 # secrets
-# services/config.js — key stored as EAS secret
+services/config.js
 .env
 
 # Excel files
