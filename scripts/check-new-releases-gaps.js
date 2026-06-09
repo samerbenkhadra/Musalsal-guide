@@ -1,8 +1,9 @@
+require("dotenv").config();
 const path = require('path');
 const XLSX = require('xlsx');
 
 const SUPABASE_URL = 'https://nkhhtznlasaqpatyzecp.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5raGh0em5sYXNhcXBhdHl6ZWNwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDg3MzE3MSwiZXhwIjoyMDkwNDQ5MTcxfQ.KunWmsYbfhgogDFGkiP_aVIar1UhJMpOTRTrm5m2SpM';
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const TMDB_KEY = 'df249df3a0df066640d620b5d876ef69';
 const TMDB_BASE = 'https://api.themoviedb.org/3';
 
@@ -17,6 +18,11 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 const sixMonthsAgo = new Date();
 sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 const recentThreshold = sixMonthsAgo.toISOString().split('T')[0];
+
+const today = new Date().toISOString().split('T')[0];
+const sixMonthsAhead = new Date();
+sixMonthsAhead.setMonth(sixMonthsAhead.getMonth() + 6);
+const futureCutoff = sixMonthsAhead.toISOString().split('T')[0];
 
 // Regions to check for watch providers (Middle East)
 const WATCH_REGIONS = ['SA', 'AE', 'EG', 'QA', 'KW'];
@@ -42,6 +48,8 @@ const PROVIDER_MAP = {
   'disney+': { name: 'Disney+', url: 'https://www.disneyplus.com' },
   'amazon': { name: 'Amazon Prime', url: 'https://www.primevideo.com' },
   'prime': { name: 'Amazon Prime', url: 'https://www.primevideo.com' },
+  'tabii': { name: 'Tabii', url: 'https://www.tabii.com' },
+  'trt': { name: 'Tabii', url: 'https://www.tabii.com' },
 };
 
 const resolveProvider = (name) => {
@@ -199,12 +207,34 @@ const run = async () => {
   };
 
   // ── New Releases ─────────────────────────────────────────────────────────────
-  console.log('\n[New Releases] Fetching library shows...');
+  console.log('\n[New Releases] Fetching library + TMDB shows...');
   const recentLib = await sbGet(`library_shows?first_air_date=gte.${recentThreshold}&select=show_id&limit=1000`);
-  const recentIds = [...new Set(recentLib.map(r => r.show_id))];
-  console.log(`  ${recentIds.length} shows found`);
-  const recentDetails = await fetchDetails(recentIds, 'New Releases');
-  await processShows(recentDetails, 'New Releases');
+  const recentLibIds = [...new Set(recentLib.map(r => r.show_id))];
+  const recentLibDetails = await fetchDetails(recentLibIds, 'New Releases lib');
+
+  const recentParams = `first_air_date.gte=${recentThreshold}&first_air_date.lte=${today}&sort_by=first_air_date.desc&without_genres=16`;
+  const [arRecent, trRecent] = await Promise.all([
+    fetchTmdbPages(`/discover/tv?${recentParams}&with_original_language=ar`, 5),
+    fetchTmdbPages(`/discover/tv?${recentParams}&with_original_language=tr`, 5),
+  ]);
+  const recentTmdb = [...arRecent, ...trRecent].filter((s, i, a) => a.findIndex(x => x.id === s.id) === i);
+  const recentLibIdSet = new Set(recentLibIds);
+  const recentTmdbOnly = recentTmdb.filter(s => !recentLibIdSet.has(s.id));
+
+  const allRecent = [...recentLibDetails, ...recentTmdbOnly].filter((s, i, a) => a.findIndex(x => x.id === s.id) === i);
+  console.log(`  ${recentLibIds.length} library + ${recentTmdbOnly.length} TMDB-only = ${allRecent.length} total`);
+  await processShows(allRecent, 'New Releases');
+
+  // ── Coming Soon ───────────────────────────────────────────────────────────────
+  console.log('\n[Coming Soon] Fetching from TMDB...');
+  const upcomingParams = `first_air_date.gte=${today}&first_air_date.lte=${futureCutoff}&sort_by=first_air_date.asc&without_genres=16`;
+  const [arUpcoming, trUpcoming] = await Promise.all([
+    fetchTmdbPages(`/discover/tv?${upcomingParams}&with_original_language=ar`, 3),
+    fetchTmdbPages(`/discover/tv?${upcomingParams}&with_original_language=tr`, 3),
+  ]);
+  const upcomingShows = [...arUpcoming, ...trUpcoming].filter((s, i, a) => a.findIndex(x => x.id === s.id) === i);
+  console.log(`  ${upcomingShows.length} unique shows from TMDB`);
+  await processShows(upcomingShows, 'Coming Soon');
 
   // ── Golden Era ────────────────────────────────────────────────────────────────
   console.log('\n[Golden Era] Fetching from TMDB...');
@@ -253,7 +283,7 @@ const run = async () => {
   autoUploaded.forEach(r => console.log(`  [${r.section}] ${r.name} → ${r.platforms}`));
 
   console.log('\n── Manual gaps remaining ──');
-  for (const section of ['New Releases', 'Golden Era', 'Popular']) {
+  for (const section of ['New Releases', 'Coming Soon', 'Popular', 'Golden Era']) {
     const rows = allRows.filter(r => r.section === section);
     const mw = rows.filter(r => r.missingWatch).length;
     const md = rows.filter(r => r.missingDesc).length;

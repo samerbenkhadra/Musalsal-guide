@@ -1,7 +1,8 @@
+require("dotenv").config();
 const API_KEY = 'df249df3a0df066640d620b5d876ef69';
 const BASE_URL = 'https://api.themoviedb.org/3';
 const SUPABASE_URL = 'https://nkhhtznlasaqpatyzecp.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5raGh0em5sYXNhcXBhdHl6ZWNwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3NDg3MzE3MSwiZXhwIjoyMDkwNDQ5MTcxfQ.KunWmsYbfhgogDFGkiP_aVIar1UhJMpOTRTrm5m2SpM';
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
 const XLSX = require('xlsx');
 const path = require('path');
 

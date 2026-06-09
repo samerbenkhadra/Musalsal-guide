@@ -129,7 +129,7 @@ export default function DiscoverScreen({ navigation }) {
       };
       setSections(newSections);
       try {
-        await AsyncStorage.setItem(`discover_v5_${lang}`, JSON.stringify({ sections: newSections, timestamp: Date.now() }));
+        await AsyncStorage.setItem(`discover_v6_${lang}`, JSON.stringify({ sections: newSections, timestamp: Date.now() }));
       } catch {}
     } catch (e) {
       console.log('Discover load error:', e);
@@ -139,7 +139,7 @@ export default function DiscoverScreen({ navigation }) {
 
   const loadAll = async (lang) => {
     try {
-      const raw = await AsyncStorage.getItem(`discover_v5_${lang}`);
+      const raw = await AsyncStorage.getItem(`discover_v6_${lang}`);
       if (raw) {
         const { sections: cached, timestamp } = JSON.parse(raw);
         setSections(cached);
@@ -280,7 +280,7 @@ export default function DiscoverScreen({ navigation }) {
             <>
               {renderSection(language === 'ar' ? 'إصدارات جديدة' : 'New Releases', sections.recent, '#FFAB76', null, 'recent', language === 'ar' ? 'مسلسلات صدرت في آخر 6 أشهر' : 'Shows released in the last 6 months', language === 'ar' ? 'عبر جميع المنصات' : 'Across all platforms')}
               {renderSection(language === 'ar' ? 'الأكثر مشاهدة' : 'Most Popular', sections.popular, '#B39DDB', null, 'popular', language === 'ar' ? 'أكثر المسلسلات مشاهدةً على الإطلاق' : 'The most watched shows of all time')}
-              {renderSection(language === 'ar' ? 'قريباً' : 'Coming Soon', sections.upcoming, '#4DB6AC', null, 'upcoming', language === 'ar' ? 'تُعرض خلال الأشهر الثلاثة القادمة' : 'Airing in the next 3 months')}
+              {renderSection(language === 'ar' ? 'قادمًا قريبًا' : 'Upcoming', sections.upcoming, '#4DB6AC', null, 'upcoming', language === 'ar' ? 'تُعرض خلال الأشهر الستة القادمة' : 'Airing in the next 6 months')}
               {renderSection(language === 'ar' ? 'العصر الذهبي' : 'Golden Era', sections.old, '#FFD166', null, 'old', language === 'ar' ? 'مسلسلات من قبل عام 2000' : 'Shows from before the year 2000')}
             </>
           )}

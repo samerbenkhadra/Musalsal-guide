@@ -1,3 +1,4 @@
+require("dotenv").config();
 const XLSX = require('xlsx');
 const path = require('path');
 

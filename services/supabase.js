@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 import * as SecureStore from 'expo-secure-store';
 
 const SUPABASE_URL = 'https://nkhhtznlasaqpatyzecp.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5raGh0em5sYXNhcXBhdHl6ZWNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ4NzMxNzEsImV4cCI6MjA5MDQ0OTE3MX0.C8DSixRp9eFVJq3U43f3VPg7RwraMDAFk4hLD20noKo';
+const SUPABASE_ANON_KEY = 'sb_publishable_jnkKomxY482IhlpCr-2loA_dgBzXECu';
 
 const secureStoreAdapter = {
   getItem: (key) => SecureStore.getItemAsync(key).catch(() => null),
@@ -156,6 +156,8 @@ const TMDB_PROVIDER_MAP = {
   'disney': { name: 'Disney+', url: 'https://www.disneyplus.com' },
   'amazon prime': { name: 'Amazon Prime', url: 'https://www.primevideo.com' },
   'prime video': { name: 'Amazon Prime', url: 'https://www.primevideo.com' },
+  'tabii': { name: 'Tabii', url: 'https://www.tabii.com' },
+  'trt': { name: 'Tabii', url: 'https://www.tabii.com' },
 };
 
 const resolveTmdbProvider = (name) => {

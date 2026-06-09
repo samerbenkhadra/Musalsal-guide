@@ -86,9 +86,9 @@ export const fetchTMDBSection = async (type, language = 'en') => {
     sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
     const recentCutoff = sixMonthsAgo.toISOString().split('T')[0];
 
-    const threeMonthsAhead = new Date();
-    threeMonthsAhead.setMonth(threeMonthsAhead.getMonth() + 3);
-    const futureCutoff = threeMonthsAhead.toISOString().split('T')[0];
+    const sixMonthsAhead = new Date();
+    sixMonthsAhead.setMonth(sixMonthsAhead.getMonth() + 6);
+    const futureCutoff = sixMonthsAhead.toISOString().split('T')[0];
 
     const params = type === 'recent'
       ? `first_air_date.gte=${recentCutoff}&first_air_date.lte=${today}&sort_by=first_air_date.desc&without_genres=16`
