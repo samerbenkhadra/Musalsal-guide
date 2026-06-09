@@ -196,9 +196,9 @@ const getDaysUntilNext = () => {
   return nextRotationDay - daysSinceEpoch;
 };
 
-export default function RegionSelectionScreen({ navigation }) {
+export default function RegionSelectionScreen({ navigation, route }) {
   const posthog = usePostHog();
-  const [mainMode, setMainMode] = useState('discover');
+  const [mainMode, setMainMode] = useState(route?.params?.defaultMode || 'discover');
   const [browseMode, setBrowseMode] = useState('actor');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -422,25 +422,6 @@ export default function RegionSelectionScreen({ navigation }) {
           </View>
         </View>
 
-        {/* Main Toggle */}
-        <View style={styles.mainToggle}>
-          <TouchableOpacity
-            style={[styles.mainBtn, mainMode === 'discover' && styles.mainBtnActive]}
-            onPress={() => setMainMode('discover')}
-          >
-            <Text style={[styles.mainBtnText, mainMode === 'discover' && styles.mainBtnTextActive]}>
-              {language === 'ar' ? '✨ اكتشف' : '✨ Discover'}
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.mainBtn, mainMode === 'browse' && styles.mainBtnActive]}
-            onPress={() => setMainMode('browse')}
-          >
-            <Text style={[styles.mainBtnText, mainMode === 'browse' && styles.mainBtnTextActive]}>
-              {language === 'ar' ? 'تصفح' : 'Browse'}
-            </Text>
-          </TouchableOpacity>
-        </View>
 
         {/* Discover Tab */}
         {mainMode === 'discover' && (

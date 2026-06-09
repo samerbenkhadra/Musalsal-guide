@@ -1,300 +1,327 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
-  View,
-  Text,
-  ScrollView,
-  TouchableOpacity,
-  StyleSheet,
-  SafeAreaView,
-  Image,
-  ActivityIndicator,
+  View, Text, TouchableOpacity, StyleSheet, SafeAreaView,
+  ScrollView, Image, ActivityIndicator, TextInput,
 } from 'react-native';
-import { useFocusEffect } from '@react-navigation/native';
-import { fetchShowById, fetchPersonDetails, IMAGE_BASE_URL } from '../services/tmdb';
-import { getSavedShowsWithMeta, getWatchedShowsWithMeta, toggleSaved, toggleWatched } from '../services/watchlist';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Ionicons } from '@expo/vector-icons';
+import { fetchLibraryShowIds, fetchTitleOverrides, fetchBlockedShows, fetchCategoryShows, searchTitleOverrides } from '../services/supabase';
+import { IMAGE_BASE_URL, searchShowsGlobal, fetchTMDBSection, fetchShowById } from '../services/tmdb';
+import { getSavedShows, toggleSaved } from '../services/watchlist';
 import { useLanguage } from '../context/LanguageContext';
-import { useAuth } from '../context/AuthContext';
+import { usePostHog } from 'posthog-react-native';
+import Skeleton from '../components/Skeleton';
 
-const COLLECTIONS = [
-  {
-    id: 'syrian_classics',
-    title: 'Syrian Drama Classics',
-    titleAr: 'كلاسيكيات الدراما السورية',
-    description: 'Iconic shows that defined Syrian television',
-    descriptionAr: 'مسلسلات أيقونية شكّلت التلفزيون السوري',
-    accent: '#637AC9',
-    showIds: [94133, 95355, 95956],
-    actorIds: [1259102, 2297163, 2852223, 2361943],
-  },
-  {
-    id: 'turkish_romance',
-    title: 'Turkish Romance',
-    titleAr: 'الرومانسية التركية',
-    description: 'Sweeping love stories from Turkey\'s biggest productions',
-    descriptionAr: 'قصص حب ملحمية من أضخم الإنتاجات التركية',
-    accent: '#C97A63',
-    showIds: [],
-    actorIds: [1078769, 142855, 145499, 1424928],
-  },
-  {
-    id: 'lebanese_classics',
-    title: 'Lebanese Classics',
-    titleAr: 'كلاسيكيات لبنانية',
-    description: 'Timeless shows from Lebanese television\'s golden era',
-    descriptionAr: 'مسلسلات خالدة من العصر الذهبي للتلفزيون اللبناني',
-    accent: '#C96363',
-    showIds: [319776, 319779],
-    actorIds: [2047345, 225883, 231328],
-  },
-  {
-    id: 'egyptian_legends',
-    title: 'Egyptian Legends',
-    titleAr: 'أساطير مصرية',
-    description: 'The greatest names in Egyptian drama',
-    descriptionAr: 'أبرز الأسماء في الدراما المصرية',
-    accent: '#C9637A',
-    showIds: [],
-    actorIds: [13202, 130207, 140869, 232318],
-  },
-  {
-    id: 'gulf_classics',
-    title: 'Gulf Classics',
-    titleAr: 'كلاسيكيات خليجية',
-    description: 'Beloved shows from the Gulf\'s rich drama heritage',
-    descriptionAr: 'مسلسلات محبوبة من التراث الدرامي الخليجي',
-    accent: '#7AC963',
-    showIds: [290649, 283620, 284483, 277991, 251691],
-    actorIds: [1412399],
-  },
-  {
-    id: 'turkish_thriller',
-    title: 'Turkish Thriller',
-    titleAr: 'الإثارة التركية',
-    description: 'Edge-of-your-seat drama from Turkey\'s best thriller productions',
-    descriptionAr: 'دراما مشوّقة من أفضل الإنتاجات التركية',
-    accent: '#B39DDB',
-    showIds: [],
-    actorIds: [1078769, 1004806, 59764],
-  },
-];
+function DiscoverSkeleton() {
+  return (
+    <View style={{ paddingTop: 8 }}>
+      {[0, 1, 2].map(i => (
+        <View key={i} style={{ marginBottom: 28 }}>
+          <View style={{ paddingHorizontal: 24, marginBottom: 12 }}>
+            <Skeleton width={130} height={18} borderRadius={6} style={{ marginBottom: 6 }} />
+            <Skeleton width={90} height={11} borderRadius={4} />
+          </View>
+          <View style={{ flexDirection: 'row', paddingHorizontal: 24, gap: 12 }}>
+            {[0, 1, 2, 3, 4].map(j => (
+              <View key={j} style={{ width: 100 }}>
+                <Skeleton width={100} height={150} borderRadius={10} style={{ marginBottom: 6 }} />
+                <Skeleton width={70} height={10} borderRadius={4} style={{ marginBottom: 3 }} />
+                <Skeleton width={50} height={10} borderRadius={4} />
+              </View>
+            ))}
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
 
 export default function DiscoverScreen({ navigation }) {
-  const { language } = useLanguage();
-  const { signOut } = useAuth();
-  const [collectionData, setCollectionData] = useState({});
-  const [savedShows, setSavedShows] = useState([]);
-  const [watchedShows, setWatchedShows] = useState([]);
+  const posthog = usePostHog();
+  const { language, toggleLanguage } = useLanguage();
+  const [sections, setSections] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [libraryIds, setLibraryIds] = useState(new Set());
+  const [savedIds, setSavedIds] = useState(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const searchTimer = useRef(null);
 
-  useEffect(() => {
-    loadAll();
-  }, [language]);
+  const handleBookmark = (show) => {
+    const id = show.id;
+    setSavedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+    toggleSaved(id, show);
+  };
 
-  useFocusEffect(useCallback(() => {
-    getSavedShowsWithMeta().then(setSavedShows);
-    getWatchedShowsWithMeta().then(setWatchedShows);
-  }, []));
+  useEffect(() => { loadAll(language); getSavedShows().then(setSavedIds); }, []);
+  useEffect(() => { loadAll(language); }, [language]);
 
-  const loadAll = async () => {
-    const lang = language === 'ar' ? 'ar' : 'en';
-    const results = {};
-    await Promise.all(
-      COLLECTIONS.map(async (col) => {
-        const [shows, actors] = await Promise.all([
-          Promise.all(col.showIds.map((id) => fetchShowById(id, lang).catch(() => null))),
-          Promise.all(col.actorIds.map((id) => fetchPersonDetails(id, lang).catch(() => null))),
-        ]);
-        results[col.id] = {
-          shows: shows.filter((s) => s && s.poster_path),
-          actors: actors.filter(Boolean),
-        };
-      })
+  const fetchFresh = async (lang) => {
+    try {
+      const [libIds, titleMap, tmdbRecent, tmdbPopular, tmdbOld, tmdbUpcoming, oldLibIds, blockedIds] = await Promise.all([
+        fetchLibraryShowIds(),
+        fetchTitleOverrides(),
+        fetchTMDBSection('recent', lang),
+        fetchTMDBSection('popular', lang),
+        fetchTMDBSection('old', lang),
+        fetchTMDBSection('upcoming', lang),
+        fetchCategoryShows('old'),
+        fetchBlockedShows(),
+      ]);
+      setLibraryIds(libIds);
+
+      const applyOverrides = (shows) => shows.map(s => titleMap[s.id] ? { ...s, name: titleMap[s.id] } : s);
+      const filtered = (shows) => applyOverrides(shows.filter(s => !blockedIds.has(s.id)));
+
+      const apiLang = lang === 'ar' ? 'ar' : 'en';
+
+      // Supplement Classics with curated library shows TMDB missed
+      const tmdbOldIds = new Set(tmdbOld.map(s => s.id));
+      const missingIds = oldLibIds.filter(id => !tmdbOldIds.has(id) && !blockedIds.has(id));
+      const missingShows = [];
+      for (let i = 0; i < missingIds.length; i += 20) {
+        const batch = missingIds.slice(i, i + 20);
+        const results = await Promise.all(batch.map(id => fetchShowById(id, apiLang).catch(() => null)));
+        results.forEach(show => { if (show?.poster_path) missingShows.push(titleMap[show.id] ? { ...show, name: titleMap[show.id] } : show); });
+      }
+
+      // Supplement New Releases with non-Turkish library shows TMDB's discover missed
+      const sixMonthsAgo = new Date();
+      sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+      const recentThreshold = sixMonthsAgo.toISOString().split('T')[0];
+      const tmdbRecentIds = new Set(tmdbRecent.map(s => s.id));
+      const missingRecentIds = [...libIds].filter(id => !tmdbRecentIds.has(id) && !blockedIds.has(id));
+      const missingRecentShows = [];
+      for (let i = 0; i < missingRecentIds.length; i += 20) {
+        const batch = missingRecentIds.slice(i, i + 20);
+        const results = await Promise.all(batch.map(id => fetchShowById(id, apiLang).catch(() => null)));
+        results.forEach(show => {
+          if (show?.poster_path && (show.first_air_date || '') >= recentThreshold) {
+            missingRecentShows.push(titleMap[show.id] ? { ...show, name: titleMap[show.id] } : show);
+          }
+        });
+      }
+
+      const baseRecent = filtered(tmdbRecent);
+      const combined = [...baseRecent, ...missingRecentShows]
+        .filter((s, i, a) => a.findIndex(x => x.id === s.id) === i)
+        .sort((a, b) => (b.first_air_date || '').localeCompare(a.first_air_date || ''));
+
+      // Interleave Arabic and Turkish so neither dominates
+      const arRecent = combined.filter(s => s.original_language !== 'tr');
+      const trRecent = combined.filter(s => s.original_language === 'tr');
+      const allRecent = [];
+      for (let i = 0; i < Math.max(arRecent.length, trRecent.length); i++) {
+        if (i < arRecent.length) allRecent.push(arRecent[i]);
+        if (i < trRecent.length) allRecent.push(trRecent[i]);
+      }
+
+      const newSections = {
+        recent: allRecent,
+        upcoming: filtered(tmdbUpcoming),
+        popular: filtered(tmdbPopular),
+        old: [...filtered(tmdbOld), ...missingShows],
+      };
+      setSections(newSections);
+      try {
+        await AsyncStorage.setItem(`discover_v5_${lang}`, JSON.stringify({ sections: newSections, timestamp: Date.now() }));
+      } catch {}
+    } catch (e) {
+      console.log('Discover load error:', e);
+    }
+    setLoading(false);
+  };
+
+  const loadAll = async (lang) => {
+    try {
+      const raw = await AsyncStorage.getItem(`discover_v5_${lang}`);
+      if (raw) {
+        const { sections: cached, timestamp } = JSON.parse(raw);
+        setSections(cached);
+        setLoading(false);
+        if (Date.now() - timestamp > 60 * 60 * 1000) fetchFresh(lang);
+        return;
+      }
+    } catch {}
+    setLoading(true);
+    fetchFresh(lang);
+  };
+
+  const handleSearch = (text) => {
+    setSearchQuery(text);
+    if (searchTimer.current) clearTimeout(searchTimer.current);
+    if (!text.trim()) { setSearchResults([]); return; }
+    searchTimer.current = setTimeout(async () => {
+      setSearchLoading(true);
+      posthog?.capture('discover_search', { query: text });
+      const apiLang = language === 'ar' ? 'ar' : 'en';
+      const [tmdbResults, overrideMatches] = await Promise.all([
+        searchShowsGlobal(text, language, libraryIds),
+        searchTitleOverrides(text),
+      ]);
+      const tmdbIds = new Set(tmdbResults.map(s => s.id));
+      const missing = overrideMatches.filter(r => !tmdbIds.has(r.show_id));
+      const extraShows = await Promise.all(missing.map(r => fetchShowById(r.show_id, apiLang).catch(() => null)));
+      const extras = extraShows
+        .filter(s => s?.poster_path)
+        .map(s => {
+          const ov = overrideMatches.find(r => r.show_id === s.id);
+          return ov ? { ...s, name: ov.title_en } : s;
+        });
+      setSearchResults([...extras, ...tmdbResults]);
+      setSearchLoading(false);
+    }, 500);
+  };
+
+  const renderShowCard = (show, accent = '#FFAB76') => (
+    <TouchableOpacity
+      key={show.id}
+      style={styles.showCard}
+      onPress={() => navigation.navigate('EpisodeDetail', { show, accent })}
+    >
+      <View style={styles.posterWrapper}>
+        <Image source={{ uri: `${IMAGE_BASE_URL}${show.poster_path}` }} style={styles.showPoster} />
+        <TouchableOpacity
+          style={[styles.bookmarkOverlay, savedIds.has(show.id) && styles.bookmarkOverlayActive]}
+          onPress={() => handleBookmark(show)}
+        >
+          <Ionicons name={savedIds.has(show.id) ? 'bookmark' : 'bookmark-outline'} size={10} color="#fff" />
+        </TouchableOpacity>
+      </View>
+      <Text style={styles.showName} numberOfLines={2}>{show.name}</Text>
+    </TouchableOpacity>
+  );
+
+  const renderSection = (title, shows, accent, emoji, type, subtitle, categorySubtitle) => {
+    if (!shows || shows.length === 0) return null;
+    return (
+      <View style={styles.section} key={title}>
+        <View style={styles.sectionHeader}>
+          <View>
+            <Text style={styles.sectionTitle}>{title}</Text>
+            {subtitle ? <Text style={styles.sectionSubtitle}>{subtitle}</Text> : null}
+          </View>
+          <TouchableOpacity onPress={() => navigation.navigate('Category', { title, accent, shows, subtitle: categorySubtitle || subtitle })}>
+            <Text style={[styles.seeAll, { color: accent }]}>{language === 'ar' ? 'عرض الكل' : 'See all'} →</Text>
+          </TouchableOpacity>
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.sectionRow}>
+          {shows.slice(0, 10).map(show => renderShowCard(show, accent))}
+        </ScrollView>
+      </View>
     );
-    setCollectionData(results);
   };
 
   return (
     <SafeAreaView style={styles.safe}>
-      <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Text style={styles.backText}>← Back</Text>
-        </TouchableOpacity>
+      <View style={styles.header}>
+        <View>
+          <Text style={styles.title}>MusalsalGo</Text>
+          <Text style={styles.subtitle}>{language === 'ar' ? 'اكتشف مسلسلات الشرق الأوسط.' : 'Discover Middle Eastern TV.'}</Text>
+        </View>
+        <View style={styles.langToggle}>
+          <TouchableOpacity style={[styles.langBtn, language === 'en' && styles.langBtnActive]} onPress={() => language !== 'en' && toggleLanguage()}>
+            <Text style={[styles.langBtnText, language === 'en' && styles.langBtnTextActive]}>EN</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={[styles.langBtn, language === 'ar' && styles.langBtnActive]} onPress={() => language !== 'ar' && toggleLanguage()}>
+            <Text style={[styles.langBtnText, language === 'ar' && styles.langBtnTextActive]}>AR</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
 
-        <TouchableOpacity onPress={signOut} style={styles.signOutBtn}>
-          <Text style={styles.signOutText}>Sign Out</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.pageTitle}>{language === 'ar' ? 'اكتشف' : 'Discover'}</Text>
-        <Text style={styles.pageSubtitle}>
-          {language === 'ar' ? 'مجموعات مختارة بعناية' : 'Hand-picked collections for you'}
-        </Text>
-
-        {/* Saved Shows */}
-        {savedShows.length > 0 && (
-          <View style={styles.userSection}>
-            <Text style={styles.userSectionTitle}>{language === 'ar' ? '🔖 المحفوظة' : '🔖 Saved'}</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.userShowsRow}>
-              {savedShows.map((show) => (
-                <TouchableOpacity
-                  key={show.id}
-                  style={styles.userShowItem}
-                  onPress={() => navigation.navigate('EpisodeDetail', { show, accent: '#FFAB76' })}
-                >
-                  {show.poster_path ? (
-                    <Image source={{ uri: `${IMAGE_BASE_URL}${show.poster_path}` }} style={styles.userShowPoster} />
-                  ) : (
-                    <View style={[styles.userShowPoster, { backgroundColor: '#2A2A2C' }]} />
-                  )}
-                  <TouchableOpacity
-                    style={styles.unsaveBtn}
-                    onPress={async () => { await toggleSaved(show.id, show); getSavedShowsWithMeta().then(setSavedShows); }}
-                  >
-                    <Text style={styles.unsaveBtnText}>✕</Text>
-                  </TouchableOpacity>
-                  <Text style={styles.userShowName} numberOfLines={2}>{show.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder={language === 'ar' ? '🔍 ابحث عن أي مسلسل...' : '🔍 Search any show...'}
+          placeholderTextColor="#6B6B70"
+          value={searchQuery}
+          onChangeText={handleSearch}
+          returnKeyType="search"
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => { setSearchQuery(''); setSearchResults([]); }} style={styles.searchClear}>
+            <Text style={styles.searchClearText}>✕</Text>
+          </TouchableOpacity>
         )}
+      </View>
 
-        {/* Watched Shows */}
-        {watchedShows.length > 0 && (
-          <View style={styles.userSection}>
-            <Text style={styles.userSectionTitle}>{language === 'ar' ? '✓ شاهدت' : '✓ Watched'}</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.userShowsRow}>
-              {watchedShows.map((show) => (
-                <TouchableOpacity
-                  key={show.id}
-                  style={styles.userShowItem}
-                  onPress={() => navigation.navigate('EpisodeDetail', { show, accent: '#FFAB76' })}
-                >
-                  {show.poster_path ? (
-                    <Image source={{ uri: `${IMAGE_BASE_URL}${show.poster_path}` }} style={styles.userShowPoster} />
-                  ) : (
-                    <View style={[styles.userShowPoster, { backgroundColor: '#2A2A2C' }]} />
-                  )}
-                  {show.rating ? (
-                    <View style={styles.ratingBadge}>
-                      <Text style={styles.ratingBadgeText}>{'★'.repeat(show.rating)}</Text>
-                    </View>
-                  ) : null}
-                  <Text style={styles.userShowName} numberOfLines={2}>{show.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-
-        {COLLECTIONS.map((col) => {
-          const data = collectionData[col.id];
-          return (
-            <View key={col.id} style={styles.collection}>
-              <View style={[styles.collectionHeader, { borderLeftColor: col.accent }]}>
-                <Text style={[styles.collectionTitle, { color: col.accent }]}>
-                  {language === 'ar' ? col.titleAr : col.title}
-                </Text>
-                <Text style={styles.collectionDesc}>
-                  {language === 'ar' ? col.descriptionAr : col.description}
-                </Text>
-              </View>
-
-              {/* Featured Actors */}
-              {data?.actors?.length > 0 && (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.actorsRow}>
-                  {data.actors.map((actor) => (
-                    <TouchableOpacity
-                      key={actor.id}
-                      style={styles.actorItem}
-                      onPress={() => navigation.navigate('ActorProfile', {
-                        personId: actor.id,
-                        personName: actor.name,
-                        nameAr: language === 'ar' ? actor.name : undefined,
-                      })}
-                    >
-                      {actor.profile_path ? (
-                        <Image source={{ uri: `${IMAGE_BASE_URL}${actor.profile_path}` }} style={styles.actorPhoto} />
-                      ) : (
-                        <View style={styles.actorPhotoPlaceholder} />
-                      )}
-                      <Text style={styles.actorName} numberOfLines={2}>{actor.name}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              )}
-
-              {/* Shows */}
-              {!data ? (
-                <ActivityIndicator color={col.accent} style={{ marginVertical: 16 }} />
-              ) : data.shows.length > 0 ? (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.showsRow}>
-                  {data.shows.map((show) => (
-                    <TouchableOpacity
-                      key={show.id}
-                      style={styles.showItem}
-                      onPress={() => navigation.navigate('EpisodeDetail', { show, accent: col.accent })}
-                    >
-                      <Image source={{ uri: `${IMAGE_BASE_URL}${show.poster_path}` }} style={styles.showPoster} />
-                      <Text style={styles.showName} numberOfLines={2}>{show.name}</Text>
-                    </TouchableOpacity>
-                  ))}
-                </ScrollView>
-              ) : null}
-            </View>
-          );
-        })}
-      </ScrollView>
+      {searchQuery.length > 0 ? (
+        <ScrollView contentContainerStyle={styles.searchResults} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+          {searchLoading ? (
+            <ActivityIndicator color="#FFAB76" style={{ marginTop: 20 }} />
+          ) : searchResults.length === 0 ? (
+            <Text style={styles.noResults}>{language === 'ar' ? 'لا نتائج' : 'No results found'}</Text>
+          ) : (
+            searchResults.map(show => (
+              <TouchableOpacity
+                key={show.id}
+                style={styles.searchResultItem}
+                onPress={() => navigation.navigate('EpisodeDetail', { show, accent: '#FFAB76' })}
+              >
+                <Image source={{ uri: `${IMAGE_BASE_URL}${show.poster_path}` }} style={styles.searchResultPoster} />
+                <View style={styles.searchResultInfo}>
+                  <Text style={styles.searchResultName} numberOfLines={2}>{show.name}</Text>
+                  {show.first_air_date && <Text style={styles.searchResultYear}>{show.first_air_date.split('-')[0]}</Text>}
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
+        </ScrollView>
+      ) : (
+        <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+          {loading ? (
+            <DiscoverSkeleton />
+          ) : (
+            <>
+              {renderSection(language === 'ar' ? 'إصدارات جديدة' : 'New Releases', sections.recent, '#FFAB76', null, 'recent', language === 'ar' ? 'مسلسلات صدرت في آخر 6 أشهر' : 'Shows released in the last 6 months', language === 'ar' ? 'عبر جميع المنصات' : 'Across all platforms')}
+              {renderSection(language === 'ar' ? 'الأكثر مشاهدة' : 'Most Popular', sections.popular, '#B39DDB', null, 'popular', language === 'ar' ? 'أكثر المسلسلات مشاهدةً على الإطلاق' : 'The most watched shows of all time')}
+              {renderSection(language === 'ar' ? 'قريباً' : 'Coming Soon', sections.upcoming, '#4DB6AC', null, 'upcoming', language === 'ar' ? 'تُعرض خلال الأشهر الثلاثة القادمة' : 'Airing in the next 3 months')}
+              {renderSection(language === 'ar' ? 'العصر الذهبي' : 'Golden Era', sections.old, '#FFD166', null, 'old', language === 'ar' ? 'مسلسلات من قبل عام 2000' : 'Shows from before the year 2000')}
+            </>
+          )}
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#1C1C1E' },
-  container: { paddingHorizontal: 24, paddingTop: 48, paddingBottom: 40 },
-  backBtn: { marginBottom: 16 },
-  signOutBtn: { alignSelf: 'flex-end', marginBottom: 8 },
-  signOutText: { color: '#FF453A', fontSize: 14 },
-  backText: { fontSize: 15, fontWeight: '600', color: '#FFAB76' },
-  pageTitle: { fontSize: 28, fontWeight: '800', color: '#F5E6D0', marginBottom: 4 },
-  pageSubtitle: { fontSize: 14, color: '#A08060', marginBottom: 28 },
-  collection: { marginBottom: 32 },
-  collectionHeader: { borderLeftWidth: 3, paddingLeft: 12, marginBottom: 16 },
-  collectionTitle: { fontSize: 18, fontWeight: '800', marginBottom: 4 },
-  collectionDesc: { fontSize: 13, color: '#A08060', lineHeight: 18 },
-  actorsRow: { gap: 14, paddingBottom: 12 },
-  actorItem: { alignItems: 'center', width: 68 },
-  actorPhoto: { width: 56, height: 56, borderRadius: 28, marginBottom: 6 },
-  actorPhotoPlaceholder: { width: 56, height: 56, borderRadius: 28, backgroundColor: '#2A2A2C', marginBottom: 6 },
-  actorName: { fontSize: 11, color: '#F5E6D0', textAlign: 'center', lineHeight: 15 },
-  showsRow: { gap: 12 },
-  showItem: { width: 100 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', paddingHorizontal: 24, paddingTop: 20, paddingBottom: 12 },
+  title: { fontSize: 28, fontWeight: '800', color: '#F5E6D0', letterSpacing: 0.5 },
+  subtitle: { fontSize: 13, color: '#A08060', marginTop: 2 },
+  langToggle: { flexDirection: 'row', backgroundColor: '#2A2A2C', borderRadius: 8, padding: 3 },
+  langBtn: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 6 },
+  langBtnActive: { backgroundColor: '#F5E6D0' },
+  langBtnText: { fontSize: 13, fontWeight: '700', color: '#6B6B70' },
+  langBtnTextActive: { color: '#1C1C1E' },
+  searchContainer: { flexDirection: 'row', alignItems: 'center', marginHorizontal: 24, marginBottom: 16, backgroundColor: '#2A2A2C', borderRadius: 12, paddingHorizontal: 14 },
+  searchInput: { flex: 1, color: '#F5E6D0', fontSize: 14, paddingVertical: 12 },
+  searchClear: { padding: 6 },
+  searchClearText: { color: '#6B6B70', fontSize: 14 },
+  searchResults: { paddingHorizontal: 24, paddingBottom: 32 },
+  noResults: { color: '#6B6B70', textAlign: 'center', marginTop: 40, fontSize: 14 },
+  searchResultItem: { flexDirection: 'row', gap: 12, marginBottom: 16, alignItems: 'center' },
+  searchResultPoster: { width: 52, height: 78, borderRadius: 8 },
+  searchResultInfo: { flex: 1 },
+  searchResultName: { fontSize: 15, fontWeight: '700', color: '#F5E6D0', marginBottom: 4 },
+  searchResultYear: { fontSize: 12, color: '#6B6B70', marginBottom: 6 },
+  scroll: { paddingBottom: 40 },
+  section: { marginBottom: 8 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 24, marginBottom: 12 },
+  sectionTitle: { fontSize: 17, fontWeight: '800', color: '#F5E6D0' },
+  sectionSubtitle: { fontSize: 12, color: '#6B6B70', marginTop: 2 },
+  seeAll: { fontSize: 13, fontWeight: '600' },
+  sectionRow: { paddingHorizontal: 24, gap: 12 },
+  showCard: { width: 100 },
+  posterWrapper: { position: 'relative', width: 100, height: 150 },
   showPoster: { width: 100, height: 150, borderRadius: 10, marginBottom: 6 },
-  showName: { fontSize: 11, color: '#C9A880', lineHeight: 15 },
-  userSection: { marginBottom: 28 },
-  userSectionTitle: { fontSize: 16, fontWeight: '800', color: '#F5E6D0', marginBottom: 12 },
-  userShowsRow: { gap: 12, paddingBottom: 4 },
-  userShowItem: { width: 90, position: 'relative' },
-  userShowPoster: { width: 90, height: 135, borderRadius: 10, marginBottom: 6 },
-  userShowName: { fontSize: 11, color: '#C9A880', lineHeight: 15 },
-  unsaveBtn: {
-    position: 'absolute',
-    top: 4,
-    right: 4,
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  unsaveBtnText: { fontSize: 10, color: '#fff', fontWeight: '700' },
-  ratingBadge: {
-    position: 'absolute',
-    bottom: 28,
-    left: 4,
-    backgroundColor: 'rgba(0,0,0,0.65)',
-    borderRadius: 6,
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-  },
-  ratingBadgeText: { fontSize: 9, color: '#FFD166' },
+  bookmarkOverlay: { position: 'absolute', bottom: 4, right: 4, width: 20, height: 20, borderRadius: 10, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' },
+  bookmarkOverlayActive: { backgroundColor: '#637AC9' },
+  showName: { fontSize: 11, color: '#C9A880', lineHeight: 15, marginTop: 6 },
 });

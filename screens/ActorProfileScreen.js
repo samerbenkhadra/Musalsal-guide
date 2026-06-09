@@ -8,13 +8,45 @@ import {
   SafeAreaView,
   Image,
   FlatList,
-  ActivityIndicator,
   Linking,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { fetchPersonDetails, fetchPersonTVCredits, IMAGE_BASE_URL } from '../services/tmdb';
-import { getWatchedShows, toggleWatched } from '../services/watchlist';
-import { fetchBlockedShows, fetchLibraryShowIds } from '../services/supabase';
+import { getWatchedShows, getSavedShows, toggleSaved } from '../services/watchlist';
+import { fetchBlockedShows } from '../services/supabase';
 import { useLanguage } from '../context/LanguageContext';
+import Skeleton from '../components/Skeleton';
+
+function ActorProfileSkeleton() {
+  const cardSize = '30%';
+  return (
+    <View style={{ padding: 24 }}>
+      <View style={{ flexDirection: 'row', gap: 16, marginBottom: 20 }}>
+        <Skeleton width={100} height={140} borderRadius={12} />
+        <View style={{ flex: 1, justifyContent: 'center', gap: 8 }}>
+          <Skeleton width={150} height={20} borderRadius={6} />
+          <Skeleton width={60} height={13} borderRadius={4} />
+          <Skeleton width={80} height={13} borderRadius={4} />
+          <Skeleton width={90} height={13} borderRadius={4} style={{ marginTop: 6 }} />
+        </View>
+      </View>
+      <Skeleton width="100%" height={13} borderRadius={4} style={{ marginBottom: 6 }} />
+      <Skeleton width="100%" height={13} borderRadius={4} style={{ marginBottom: 6 }} />
+      <Skeleton width="100%" height={13} borderRadius={4} style={{ marginBottom: 6 }} />
+      <Skeleton width="60%" height={13} borderRadius={4} style={{ marginBottom: 28 }} />
+      <Skeleton width={80} height={17} borderRadius={4} style={{ marginBottom: 16 }} />
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 12 }}>
+        {[0,1,2,3,4,5].map(i => (
+          <View key={i} style={{ width: '30%' }}>
+            <Skeleton width="100%" height={140} borderRadius={10} style={{ marginBottom: 6 }} />
+            <Skeleton width="80%" height={11} borderRadius={4} style={{ marginBottom: 3 }} />
+            <Skeleton width="40%" height={10} borderRadius={4} />
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+}
 
 export default function ActorProfileScreen({ route, navigation }) {
   const { personId, personName, nameAr } = route.params;
@@ -24,24 +56,35 @@ export default function ActorProfileScreen({ route, navigation }) {
   const [loading, setLoading] = useState(true);
   const [bioExpanded, setBioExpanded] = useState(false);
   const [watchedIds, setWatchedIds] = useState(new Set());
+  const [savedIds, setSavedIds] = useState(new Set());
   const [instagramId, setInstagramId] = useState(null);
 
   useEffect(() => {
     getWatchedShows().then(setWatchedIds);
+    getSavedShows().then(setSavedIds);
   }, []);
+
+  const handleBookmark = (show) => {
+    const id = show.id;
+    setSavedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+    toggleSaved(id, show);
+  };
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
-      const [details, credits, extIds, blockedIds, libraryIds] = await Promise.all([
+      const [details, credits, extIds, blockedIds] = await Promise.all([
         fetchPersonDetails(personId),
         fetchPersonTVCredits(personId, language),
         fetch(`https://api.themoviedb.org/3/person/${personId}/external_ids?api_key=df249df3a0df066640d620b5d876ef69`).then(r => r.json()),
         fetchBlockedShows(),
-        fetchLibraryShowIds(),
       ]);
       setPerson(details);
-      setShows(credits.filter(s => libraryIds.has(s.id) && !blockedIds.has(s.id)).sort((a, b) => new Date(b.first_air_date || 0) - new Date(a.first_air_date || 0)));
+      setShows(credits.filter(s => !blockedIds.has(s.id) && s.poster_path).sort((a, b) => new Date(b.first_air_date || 0) - new Date(a.first_air_date || 0)));
       if (extIds?.instagram_id) setInstagramId(extIds.instagram_id);
       setLoading(false);
     };
@@ -56,7 +99,7 @@ export default function ActorProfileScreen({ route, navigation }) {
         </TouchableOpacity>
 
         {loading ? (
-          <ActivityIndicator size="large" color="#FFAB76" style={{ marginTop: 40 }} />
+          <ActorProfileSkeleton />
         ) : (
           <>
             <View style={styles.profileHeader}>
@@ -85,7 +128,7 @@ export default function ActorProfileScreen({ route, navigation }) {
                     </Text>
                   ) : (
                     <Text style={styles.watchedCount}>
-                      {language === 'ar' ? 'اضغط ✓ على المسلسلات التي شاهدتها' : "Tap ✓ on shows you've watched"}
+                      {language === 'ar' ? 'اضغط على أيقونة الإشارة في الملصق لحفظه في قائمتك' : 'Tap the bookmark icon on a poster to save it to your watchlist'}
                     </Text>
                   );
                 })()}
@@ -127,10 +170,14 @@ export default function ActorProfileScreen({ route, navigation }) {
                   <View style={styles.showPosterWrapper}>
                     <Image source={{ uri: `${IMAGE_BASE_URL}${show.poster_path}` }} style={styles.showPoster} />
                     <TouchableOpacity
-                      style={[styles.watchedOverlay, watchedIds.has(show.id) && styles.watchedOverlayActive]}
-                      onPress={async () => setWatchedIds(await toggleWatched(show.id))}
+                      style={[styles.bookmarkOverlay, savedIds.has(show.id) && styles.bookmarkOverlayActive]}
+                      onPress={() => handleBookmark(show)}
                     >
-                      <Text style={styles.watchedOverlayText}>✓</Text>
+                      <Ionicons
+                        name={savedIds.has(show.id) ? 'bookmark' : 'bookmark-outline'}
+                        size={12}
+                        color="#fff"
+                      />
                     </TouchableOpacity>
                   </View>
                   <Text style={styles.showName} numberOfLines={2}>{show.name}</Text>
@@ -259,7 +306,7 @@ const styles = StyleSheet.create({
     height: '100%',
     borderRadius: 10,
   },
-  watchedOverlay: {
+  bookmarkOverlay: {
     position: 'absolute',
     bottom: 4,
     right: 4,
@@ -267,19 +314,11 @@ const styles = StyleSheet.create({
     height: 22,
     borderRadius: 11,
     backgroundColor: 'rgba(0,0,0,0.55)',
-    borderWidth: 1,
-    borderColor: '#6B6B70',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  watchedOverlayActive: {
-    backgroundColor: '#4CAF50',
-    borderColor: '#4CAF50',
-  },
-  watchedOverlayText: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#fff',
+  bookmarkOverlayActive: {
+    backgroundColor: '#637AC9',
   },
   watchedCount: {
     fontSize: 12,

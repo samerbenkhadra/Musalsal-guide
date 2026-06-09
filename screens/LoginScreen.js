@@ -4,10 +4,12 @@ import {
   ActivityIndicator, KeyboardAvoidingView, Platform, Alert, Image,
 } from 'react-native';
 import * as AppleAuthentication from 'expo-apple-authentication';
+import { usePostHog } from 'posthog-react-native';
 import { useAuth } from '../context/AuthContext';
 
 export default function LoginScreen({ onSkip }) {
   const { signInWithApple, signInWithEmail, verifyOtp } = useAuth();
+  const posthog = usePostHog();
   const [appleAvailable, setAppleAvailable] = useState(false);
   const [email, setEmail] = useState('');
   const [otpSent, setOtpSent] = useState(false);
@@ -21,7 +23,11 @@ export default function LoginScreen({ onSkip }) {
   const handleApple = async () => {
     setLoading(true);
     const { error } = await signInWithApple();
-    if (error) Alert.alert('Error', 'Sign in failed. Please try again.');
+    if (error) {
+      Alert.alert('Error', 'Sign in failed. Please try again.');
+    } else {
+      posthog?.capture('login_completed', { method: 'apple' });
+    }
     setLoading(false);
   };
 
@@ -42,7 +48,11 @@ export default function LoginScreen({ onSkip }) {
     setLoading(true);
     const { error } = await verifyOtp(email.trim(), otp.trim());
     setLoading(false);
-    if (error) Alert.alert('Invalid code', 'Please check your email and try again.');
+    if (error) {
+      Alert.alert('Invalid code', 'Please check your email and try again.');
+    } else {
+      posthog?.capture('login_completed', { method: 'email' });
+    }
   };
 
   return (
@@ -109,13 +119,14 @@ export default function LoginScreen({ onSkip }) {
                   <Text style={styles.emailButtonText}>Verify Code</Text>
                 )}
               </TouchableOpacity>
+              <Text style={styles.spamHint}>Check your spam/junk folder if you don't see it</Text>
               <TouchableOpacity onPress={() => setOtpSent(false)}>
                 <Text style={styles.backText}>← Back</Text>
               </TouchableOpacity>
             </>
           )}
 
-          <TouchableOpacity style={styles.skipButton} onPress={onSkip}>
+          <TouchableOpacity style={styles.skipButton} onPress={() => { posthog?.capture('guest_continued'); onSkip(); }}>
             <Text style={styles.skipText}>Continue as guest</Text>
           </TouchableOpacity>
         </View>
@@ -184,6 +195,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     textAlign: 'center',
   },
+  spamHint: { fontSize: 13, color: '#A08060', textAlign: 'center', marginBottom: 8 },
   backText: {
     color: '#aaa',
     fontSize: 14,

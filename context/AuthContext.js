@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import * as AppleAuthentication from 'expo-apple-authentication';
 import { supabase } from '../services/supabase';
+import { migrateToSupabase } from '../services/watchlist';
 
 const AuthContext = createContext({});
 
@@ -16,9 +17,17 @@ export function AuthProvider({ children }) {
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       setSession(session);
       setUser(session?.user ?? null);
+      if (event === 'SIGNED_IN' && session?.user) {
+        migrateToSupabase(session.user.id);
+        const displayName = session.user.email.split('@')[0];
+        supabase.from('profiles').upsert(
+          { user_id: session.user.id, display_name: displayName },
+          { onConflict: 'user_id', ignoreDuplicates: true }
+        );
+      }
     });
 
     return () => subscription.unsubscribe();

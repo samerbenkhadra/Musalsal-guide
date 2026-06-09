@@ -31,6 +31,10 @@ const PLATFORM_MAP = {
   'yango': { name: 'Yango Play', url: 'https://play.yango.com' },
   'yango play': { name: 'Yango Play', url: 'https://play.yango.com' },
   'viu': { name: 'Viu', url: 'https://www.viu.com' },
+  'disney': { name: 'Disney+', url: 'https://www.disneyplus.com' },
+  'disney+': { name: 'Disney+', url: 'https://www.disneyplus.com' },
+  'amazon': { name: 'Amazon Prime', url: 'https://www.primevideo.com' },
+  'prime': { name: 'Amazon Prime', url: 'https://www.primevideo.com' },
 };
 
 const resolveWatchEntry = (raw) => {
@@ -90,6 +94,18 @@ const run = async () => {
     const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName]);
     console.log(`Processing ${sheetName} (${rows.length} rows)...`);
 
+    // Skip non-region tabs
+    if (sheetName === 'Content Gaps') continue;
+
+    // Dedicated blocked tab — just needs a TMDB ID column
+    if (sheetName.toLowerCase() === 'blocked') {
+      for (const row of rows) {
+        const showId = Number(row['TMDB ID']);
+        if (showId) blockedShows.push({ show_id: showId });
+      }
+      continue;
+    }
+
     for (const row of rows) {
       const showId = Number(row['TMDB ID']);
       if (!showId) continue;
@@ -136,12 +152,22 @@ const run = async () => {
 
   // Collect all valid show IDs as library with region
   const libraryShows = [];
+  const libraryShowsWithDate = [];
   for (const sheetName of wb.SheetNames) {
     const rows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName]);
     for (const row of rows) {
       const showId = Number(row['TMDB ID']);
       const dubbedVal = (row['Dubbed in Arabic?'] || '').toString().toLowerCase().trim();
-      if (showId) libraryShows.push({ show_id: showId, region: sheetName, dubbed: dubbedVal === 'yes' });
+      const firstAirDate = (row['First Air Date'] || '').toString().trim();
+      const addedAt = (row['Added to App'] || '').toString().trim();
+      if (!showId) continue;
+      libraryShows.push({
+        show_id: showId,
+        region: sheetName,
+        dubbed: dubbedVal === 'yes',
+        first_air_date: firstAirDate && firstAirDate.toLowerCase() !== 'unknown' ? firstAirDate : null,
+      });
+      if (addedAt) libraryShowsWithDate.push({ show_id: showId, region: sheetName, added_at: addedAt });
     }
   }
 
@@ -165,6 +191,16 @@ const run = async () => {
   console.log(`\nUploading ${uniqueBlockedShows.length} blocked shows...`);
   await upsert('blocked_shows', uniqueBlockedShows);
 
+  // Delete existing where_to_watch for any show we're about to update, then re-insert
+  const showIdsWithWatch = [...new Set(uniqueWhereToWatch.map(r => r.show_id))];
+  const chunkSize = 100;
+  for (let i = 0; i < showIdsWithWatch.length; i += chunkSize) {
+    const chunk = showIdsWithWatch.slice(i, i + chunkSize);
+    await fetch(`${SUPABASE_URL}/rest/v1/where_to_watch?show_id=in.(${chunk.join(',')})`, {
+      method: 'DELETE',
+      headers,
+    });
+  }
   console.log(`Uploading ${uniqueWhereToWatch.length} where to watch entries...`);
   await upsert('where_to_watch', uniqueWhereToWatch);
 
@@ -174,6 +210,12 @@ const run = async () => {
   const uniqueLibraryShows = [...new Map(libraryShows.map(r => [`${r.show_id}_${r.region}`, r])).values()];
   console.log(`Uploading ${uniqueLibraryShows.length} library shows...`);
   await upsert('library_shows', uniqueLibraryShows);
+
+  if (libraryShowsWithDate.length > 0) {
+    const uniqueWithDate = [...new Map(libraryShowsWithDate.map(r => [`${r.show_id}_${r.region}`, r])).values()];
+    console.log(`Updating added_at for ${uniqueWithDate.length} recently added shows...`);
+    await upsert('library_shows', uniqueWithDate);
+  }
 
   console.log(`Uploading ${uniqueTitleOverrides.length} title overrides...`);
   await upsert('title_overrides', uniqueTitleOverrides);

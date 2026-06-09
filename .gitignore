@@ -49,3 +49,6 @@ services/config.js
 # Excel files
 *.xlsx
 ~$*
+
+# Supabase CLI temp files
+supabase/.temp/

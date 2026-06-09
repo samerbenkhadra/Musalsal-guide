@@ -55,14 +55,97 @@ export const searchShows = async (query, region, language = 'en') => {
     const res = await fetch(`${BASE_URL}/search/tv?api_key=${API_KEY}&query=${encodeURIComponent(query)}&language=${language}`);
     const data = await res.json();
     const countryList = countries || (country ? [country] : null);
+    const featuredIds = new Set(featuredShowIds[region] || []);
     return (data.results || []).filter(s =>
       s.poster_path &&
       (!origLang || s.original_language === origLang) &&
-      (!countryList || (s.origin_country || []).some(c => countryList.includes(c)))
+      (!countryList || (s.origin_country || []).some(c => countryList.includes(c)) || featuredIds.has(s.id))
     );
   } catch {
     return [];
   }
+};
+
+const fetchAllPages = async (baseUrl, maxPages) => {
+  const first = await fetch(`${baseUrl}&page=1`).then(r => r.json()).catch(() => ({ results: [], total_pages: 1 }));
+  const totalPages = Math.min(first.total_pages || 1, maxPages);
+  if (totalPages <= 1) return first.results || [];
+  const rest = await Promise.all(
+    Array.from({ length: totalPages - 1 }, (_, i) =>
+      fetch(`${baseUrl}&page=${i + 2}`).then(r => r.json()).catch(() => ({ results: [] }))
+    )
+  );
+  return [first, ...rest].flatMap(d => d.results || []);
+};
+
+export const fetchTMDBSection = async (type, language = 'en') => {
+  try {
+    const apiLang = language === 'ar' ? 'ar' : 'en';
+    const today = new Date().toISOString().split('T')[0];
+    const sixMonthsAgo = new Date();
+    sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
+    const recentCutoff = sixMonthsAgo.toISOString().split('T')[0];
+
+    const threeMonthsAhead = new Date();
+    threeMonthsAhead.setMonth(threeMonthsAhead.getMonth() + 3);
+    const futureCutoff = threeMonthsAhead.toISOString().split('T')[0];
+
+    const params = type === 'recent'
+      ? `first_air_date.gte=${recentCutoff}&first_air_date.lte=${today}&sort_by=first_air_date.desc&without_genres=16`
+      : type === 'popular'
+      ? `sort_by=vote_count.desc&without_genres=16`
+      : type === 'upcoming'
+      ? `first_air_date.gte=${today}&first_air_date.lte=${futureCutoff}&sort_by=first_air_date.asc&without_genres=16`
+      : `first_air_date.lte=1999-12-31&sort_by=vote_count.desc&without_genres=16`;
+
+    const maxPages = type === 'recent' ? 5 : type === 'upcoming' ? 3 : type === 'popular' ? 2 : 2;
+    const arBase = `${BASE_URL}/discover/tv?api_key=${API_KEY}&with_original_language=ar&${params}&language=${apiLang}`;
+    const trBase = `${BASE_URL}/discover/tv?api_key=${API_KEY}&with_original_language=tr&${params}&language=${apiLang}`;
+    const gulfBase = `${BASE_URL}/discover/tv?api_key=${API_KEY}&with_origin_country=SA&${params}&language=${apiLang}`;
+
+    const [arResults, trResults, gulfResults] = await Promise.all([
+      fetchAllPages(arBase, maxPages),
+      type === 'old' ? Promise.resolve([]) : fetchAllPages(trBase, maxPages),
+      type === 'recent' || type === 'upcoming' ? fetchAllPages(gulfBase, 2) : Promise.resolve([]),
+    ]);
+
+    const dedup = (arr) => arr.filter(s => s.poster_path).filter((s, i, a) => a.findIndex(x => x.id === s.id) === i);
+
+    if (type === 'popular' || type === 'upcoming') {
+      const ar = dedup([...arResults, ...gulfResults]);
+      const tr = dedup(trResults);
+      const interleaved = [];
+      for (let i = 0; i < Math.max(ar.length, tr.length); i++) {
+        if (i < ar.length) interleaved.push(ar[i]);
+        if (i < tr.length) interleaved.push(tr[i]);
+      }
+      return interleaved.filter((s, i, a) => a.findIndex(x => x.id === s.id) === i);
+    }
+
+    const unique = dedup([...arResults, ...trResults, ...gulfResults]);
+    return type === 'recent'
+      ? unique.sort((a, b) => (b.first_air_date || '').localeCompare(a.first_air_date || ''))
+      : unique.sort((a, b) => (b.vote_count || 0) - (a.vote_count || 0));
+  } catch { return []; }
+};
+
+export const searchShowsGlobal = async (query, language = 'en', libraryIds = new Set()) => {
+  try {
+    const apiLang = language === 'ar' ? 'ar' : 'en';
+    const titleCased = query.replace(/\b\w/g, c => c.toUpperCase());
+    const urls = [
+      `${BASE_URL}/search/tv?api_key=${API_KEY}&query=${encodeURIComponent(query)}&language=${apiLang}&page=1`,
+    ];
+    if (titleCased !== query) {
+      urls.push(`${BASE_URL}/search/tv?api_key=${API_KEY}&query=${encodeURIComponent(titleCased)}&language=${apiLang}&page=1`);
+    }
+    const responses = await Promise.all(urls.map(u => fetch(u)));
+    const jsons = await Promise.all(responses.map(r => r.json()));
+    const combined = jsons.flatMap(d => d.results || []);
+    const seen = new Set();
+    const unique = combined.filter(s => { if (seen.has(s.id)) return false; seen.add(s.id); return true; });
+    return unique.filter(s => s.poster_path && (s.original_language === 'ar' || s.original_language === 'tr' || libraryIds.has(s.id)));
+  } catch { return []; }
 };
 
 export const searchPerson = async (query, language = 'en') => {
@@ -144,8 +227,8 @@ export const fetchLatestEpisode = async (showId) => {
 const featuredShowIds = {
   Egyptian: [261747, 260606, 260605, 260608, 271790, 271076, 246496, 257812, 246706, 246244, 224882, 244644, 246705, 218739, 218324, 219256, 217952, 202040, 194677, 155590, 158650, 154810, 139471, 122543, 121487, 121623, 104043, 106590, 102049, 102376, 102045, 102041, 94047, 98793, 98632, 88928, 88929, 79650, 79643, 79640, 75165, 56451, 72048, 72207, 72136, 72298, 72205, 72334, 72989, 68015, 71688, 84333, 82313, 86333, 66193, 84780, 96202, 78619, 81810, 44446, 52698, 53979, 62457, 84774, 73782, 53981, 53813, 110477, 220904, 110491, 86325, 90674, 52560, 106180, 215746, 313371, 104395, 100530],
   Syrian: [94133, 95355, 95956, 296791, 295658],
-  Lebanese: [319776, 319779, 13921],
-  Gulf: [290649, 283620, 284483, 277991, 251691, 247634, 245980, 248623, 237121, 218184, 213272, 131046, 123335, 123153, 112311, 111737, 136487, 95133, 89166, 84289, 84299, 71926, 213641, 195358, 231346, 261840, 58887, 132865, 231345, 231660, 231286, 201154, 201156, 87948, 231158, 249134, 248976, 248975, 113091, 248962, 248848, 248851, 274758, 234931, 67699, 248641, 201143, 211597, 248629, 201167, 248507, 249209, 57402, 79567, 314162, 314401, 248668, 196231, 201575, 128486, 80002, 213307, 128240, 319937],
+  Lebanese: [319776, 319779, 13921, 84299],
+  Gulf: [290649, 283620, 284483, 277991, 251691, 247634, 245980, 248623, 237121, 218184, 213272, 131046, 123335, 123153, 112311, 111737, 136487, 95133, 89166, 84289, 71926, 213641, 195358, 231346, 261840, 58887, 132865, 231345, 231660, 231286, 201154, 201156, 87948, 231158, 249134, 248976, 248975, 113091, 248962, 248848, 248851, 274758, 234931, 67699, 248641, 201143, 211597, 248629, 201167, 248507, 249209, 57402, 79567, 314162, 314401, 248668, 196231, 201575, 128486, 80002, 213307, 128240, 319937],
   Turkish: [1400, 121, 46261, 67879, 71676, 70695, 107228, 46260, 112130, 84696, 46197],
 };
 
@@ -164,7 +247,7 @@ const buildParams = (region, era = null, page, sortBy = 'popularity.desc') => {
   const { country, language } = regionCountry[region] || {};
   const dateRange = era ? (eraDateRange[era] || {}) : {};
 
-  let params = `api_key=${API_KEY}&sort_by=${sortBy}&page=${page}`;
+  let params = `api_key=${API_KEY}&sort_by=${sortBy}&page=${page}&without_genres=16`;
   if (language) params += `&with_original_language=${language}`;
   if (country) params += `&with_origin_country=${country}`;
   if (dateRange.gte) params += `&first_air_date.gte=${dateRange.gte}`;

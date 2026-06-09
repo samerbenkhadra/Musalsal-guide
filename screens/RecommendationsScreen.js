@@ -12,23 +12,23 @@ import {
   TextInput,
   Dimensions,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
 const CARD_WIDTH = (SCREEN_WIDTH - 24 - 16) / 3;
 import { useFocusEffect } from '@react-navigation/native';
 import { usePostHog } from 'posthog-react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { fetchShows, fetchAllShows, searchShows, IMAGE_BASE_URL } from '../services/tmdb';
-import { getWatchedShows, toggleWatched, getAllRatings } from '../services/watchlist';
+import { getSavedShows, toggleSaved, getAllRatings } from '../services/watchlist';
 import { getShowScores, TRAITS } from '../services/scoring';
 import { fetchBlockedShows, fetchDubbedShowIds, fetchTitleOverrides } from '../services/supabase';
 import { useLanguage } from '../context/LanguageContext';
-import { useAuth } from '../context/AuthContext';
 import SkeletonCard from '../components/SkeletonCard';
 
 export default function RecommendationsScreen({ route, navigation }) {
   const { region, accent = '#FFAB76' } = route.params;
   const { language } = useLanguage();
-  const { signOut } = useAuth();
   const posthog = usePostHog();
   const regionNamesAr = {
     Egyptian: 'مصري', Turkish: 'تركي', Gulf: 'خليجي',
@@ -40,7 +40,7 @@ export default function RecommendationsScreen({ route, navigation }) {
   const [showScores, setShowScores] = useState({});
   const [activeFilter, setActiveFilter] = useState(null);
   const [scoringDone, setScoringDone] = useState(false);
-  const [watchedIds, setWatchedIds] = useState(new Set());
+  const [savedIds, setSavedIds] = useState(new Set());
   const [ratings, setRatings] = useState({});
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -50,10 +50,20 @@ export default function RecommendationsScreen({ route, navigation }) {
   const [titleOverrides, setTitleOverrides] = useState({});
 
   useFocusEffect(useCallback(() => {
-    getWatchedShows().then(setWatchedIds);
+    getSavedShows().then(setSavedIds);
     getAllRatings().then(setRatings);
     if (region === 'Turkish') fetchDubbedShowIds('Turkish').then(setDubbedIds);
   }, []));
+
+  const handleBookmark = (show) => {
+    const id = show.id;
+    setSavedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+    toggleSaved(id, show);
+  };
 
   const [rawShows, setRawShows] = useState([]);
   const shows = useMemo(() =>
@@ -61,9 +71,7 @@ export default function RecommendationsScreen({ route, navigation }) {
     [rawShows, titleOverrides]
   );
 
-  const loadShows = async (selectedMode) => {
-    setLoading(true);
-    const blockedIds = await fetchBlockedShows();
+  const fetchFreshShows = async (selectedMode, blockedIds) => {
     const onShowsAdded = selectedMode === 'all' ? (newShows) => {
       const filtered = newShows.filter(s => !blockedIds.has(s.id));
       if (filtered.length > 0) {
@@ -71,8 +79,7 @@ export default function RecommendationsScreen({ route, navigation }) {
           const existingIds = new Set(prev.map(s => s.id));
           const unique = filtered.filter(s => !existingIds.has(s.id));
           if (unique.length === 0) return prev;
-          const combined = [...prev, ...unique];
-          return combined.sort((a, b) => (b.first_air_date || '').localeCompare(a.first_air_date || ''));
+          return [...prev, ...unique].sort((a, b) => (b.first_air_date || '').localeCompare(a.first_air_date || ''));
         });
         generateScoresInBackground(filtered);
       }
@@ -85,6 +92,33 @@ export default function RecommendationsScreen({ route, navigation }) {
     setShuffled(false);
     setLoading(false);
     generateScoresInBackground(data);
+    if (selectedMode === 'all') {
+      try {
+        await AsyncStorage.setItem(`region_shows_v1_${region}_${language}`, JSON.stringify({ shows: data, timestamp: Date.now() }));
+      } catch {}
+    }
+  };
+
+  const loadShows = async (selectedMode) => {
+    if (selectedMode === 'all') {
+      try {
+        const raw = await AsyncStorage.getItem(`region_shows_v1_${region}_${language}`);
+        if (raw) {
+          const { shows: cached, timestamp } = JSON.parse(raw);
+          setRawShows(cached);
+          setShuffled(false);
+          setLoading(false);
+          generateScoresInBackground(cached);
+          if (Date.now() - timestamp > 60 * 60 * 1000) {
+            fetchBlockedShows().then(blocked => fetchFreshShows(selectedMode, blocked));
+          }
+          return;
+        }
+      } catch {}
+    }
+    setLoading(true);
+    const blockedIds = await fetchBlockedShows();
+    fetchFreshShows(selectedMode, blockedIds);
   };
 
   const generateScoresInBackground = async (showList) => {
@@ -101,7 +135,7 @@ export default function RecommendationsScreen({ route, navigation }) {
         })
       );
       if (i + batchSize < showList.length) {
-        await new Promise((resolve) => setTimeout(resolve, 300));
+        await new Promise((resolve) => setTimeout(resolve, 50));
       }
     }
     setScoringDone(true);
@@ -127,9 +161,6 @@ export default function RecommendationsScreen({ route, navigation }) {
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <Text style={[styles.backText, { color: accent }]}>← Back</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={signOut} style={{ alignSelf: 'flex-end', marginBottom: 4 }}>
-          <Text style={{ color: '#FF453A', fontSize: 13 }}>Sign Out</Text>
         </TouchableOpacity>
         <View style={styles.headerRow}>
           <Text style={styles.headerTitle}>{language === 'ar' ? regionNamesAr[region] || region : region}</Text>
@@ -179,6 +210,7 @@ export default function RecommendationsScreen({ route, navigation }) {
         />
 
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.filterRow} contentContainerStyle={styles.filterRowContent}>
+
           {TRAITS.map((trait) => (
             <TouchableOpacity
               key={trait.key}
@@ -232,7 +264,7 @@ export default function RecommendationsScreen({ route, navigation }) {
           contentContainerStyle={styles.list}
           ListHeaderComponent={
             <Text style={styles.watchHint}>
-              {language === 'ar' ? 'اضغط ✓ على المسلسلات التي شاهدتها' : "Tap ✓ on shows you've watched"}
+              {language === 'ar' ? 'اضغط على أيقونة الإشارة في الملصق لحفظه في قائمتك' : 'Tap the bookmark icon on a poster to save it to your watchlist'}
             </Text>
           }
           renderItem={({ item }) => (
@@ -248,10 +280,10 @@ export default function RecommendationsScreen({ route, navigation }) {
                   <View style={styles.gridPosterPlaceholder} />
                 )}
                 <TouchableOpacity
-                  style={[styles.watchedBtn, watchedIds.has(item.id) && styles.watchedBtnActive]}
-                  onPress={async () => setWatchedIds(await toggleWatched(item.id, item))}
+                  style={[styles.watchedBtn, savedIds.has(item.id) && styles.watchedBtnActive]}
+                  onPress={() => handleBookmark(item)}
                 >
-                  <Text style={styles.watchedBtnText}>✓</Text>
+                  <Ionicons name={savedIds.has(item.id) ? 'bookmark' : 'bookmark-outline'} size={10} color="#fff" />
                 </TouchableOpacity>
               </View>
               <Text style={styles.gridTitle} numberOfLines={2}>{item.name}</Text>
@@ -465,19 +497,12 @@ const styles = StyleSheet.create({
     height: 20,
     borderRadius: 10,
     backgroundColor: 'rgba(0,0,0,0.55)',
-    borderWidth: 1,
-    borderColor: '#6B6B70',
     alignItems: 'center',
     justifyContent: 'center',
   },
   watchedBtnActive: {
-    backgroundColor: '#4CAF50',
-    borderColor: '#4CAF50',
-  },
-  watchedBtnText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#fff',
+    backgroundColor: '#637AC9',
+    borderColor: '#637AC9',
   },
   watchHint: {
     fontSize: 12,
